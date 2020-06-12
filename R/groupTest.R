@@ -1,6 +1,6 @@
 #!/usr/local/R/R-3.6.3/bin/Rscript
 ##!/usr/bin/env Rscript
-cat("Loading packages\n")
+print("Loading packages\n")
 suppressPackageStartupMessages(library(rbgen))
 suppressPackageStartupMessages(library(seqMeta))
 suppressPackageStartupMessages(library(optparse))
