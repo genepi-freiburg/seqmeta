@@ -1,0 +1,2 @@
+wget -O mart_export.txt 'http://www.ensembl.org/biomart/martservice?query=<Query  virtualSchemaName = "default" formatter = "TSV" header = "1" uniqueRows = "1" count = "" datasetConfigVersion = "0.6" >	<Dataset name = "hsapiens_gene_ensembl" interface = "default" >		<Attribute name = "ensembl_gene_id" />		<Attribute name = "external_gene_name" />		<Attribute name = "start_position" />		<Attribute name = "chromosome_name" />	</Dataset></Query>'
+
