@@ -1,14 +1,8 @@
 #!/usr/local/R/R-3.6.3/bin/Rscript
-##!/usr/bin/env Rscript
-print("Loading packages\n")
+print("Loading packages")
 suppressPackageStartupMessages(library(rbgen))
 suppressPackageStartupMessages(library(seqMeta))
 suppressPackageStartupMessages(library(optparse))
-
-#print = function(str) {
-#  cat(str)
-#  cat("\n")
-#}
 
 parse_options = function() {
   option_list = list( 
@@ -70,8 +64,6 @@ prepare_genotype_phenotype_matrices = function(genotype, phenotype) {
   
   print(paste("Genotype matrix: ", dim(geno_matrix)[1], "x", dim(geno_matrix)[2], 
               "; phenotype matrix: ", dim(pheno_matrix)[1], "x", dim(pheno_matrix)[2], sep=""))
-  #print(head(geno_matrix))
-  #print(head(pheno_matrix))
   
   list(genotype_matrix = geno_matrix, phenotype_matrix = pheno_matrix)
 }
@@ -80,36 +72,32 @@ build_snpinfo = function(gene, snps) {
   snp_info = data.frame(
     gene = as.character(rep(gene, length(snps))),
     Name = as.character(snps))
-  #print(head(snp_info))
   snp_info
 }
 
 calculate_null_model_residuals = function(phenotype_matrix, model_formula) {
   null_model = stats::glm(formula = model_formula, data = phenotype_matrix)
-  #print(summary(null_model))
   residuals = stats::residuals(null_model, type = "response")
   print(paste("Calculated ", length(residuals), " residuals for null model.", sep=""))
   residuals
 }
 
-process_gene = function(chr, bgen_path, gene, snps, phenotype, model_formula, sv_output_file, group_output_file, skat_o_method = "integration", write_header = F) {
-  print(paste("==== Process gene ", gene, " (", length(snps), " variants, chr", chr, ")", sep=""))
+process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
+  print(paste("==== Process gene ", gene, " (", length(snps), " variants, chr", parameters$chr, ")", sep=""))
   
-  genotype = load_genotype(chr, bgen_path, snps)
+  genotype = load_genotype(parameters$chr, parameters$bgen_path, snps)
   geno_pheno = prepare_genotype_phenotype_matrices(genotype, phenotype)
   snp_info = build_snpinfo(gene, snps)
-  #residuals = calculate_null_model_residuals(geno_pheno$phenotype_matrix, model_formula)
+  #residuals = calculate_null_model_residuals(geno_pheno$phenotype_matrix, parameters$model_formula)
   
   scores = prepScores2(Z = geno_pheno$genotype_matrix,
-                       formula = model_formula,
+                       formula = parameters$model_formula,
                        SNPInfo = snp_info,
                        data = geno_pheno$phenotype_matrix)
-  results = perform_tests(scores, snp_info, skat_o_method)
+  results = perform_tests(scores, snp_info, parameters$skat_o_method)
   
-  print(sv_output_file)
-  
-  write_sv_result(results$single_variant, sv_output_file, write_header)
-  write_group_result(results, group_output_file, write_header)
+  write_sv_result(results$single_variant, parameters$sv_output_file, write_header)
+  write_group_result(results, parameters$group_output_file, write_header)
 }
 
 write_sv_result = function(sv, sv_output_file, write_header) {
@@ -181,7 +169,6 @@ prepare_formula = function(phenotype_col, covariate_cols) {
 
 perform_tests = function(scores, snp_info, skat_o_method) {
   single_variant = singlesnpMeta(scores, SNPInfo = snp_info)
-  #print(format(head(single_variant), digits = 2))
   
   print("SKAT test")
   skat = skatMeta(scores, SNPInfo = snp_info)
@@ -192,7 +179,6 @@ perform_tests = function(scores, snp_info, skat_o_method) {
   print(format(head(burden), digits=2))
   
   print("SKAT-O test")
-  #meta.skato.results <- skatOMeta(scores, rho=seq(0,1,length=11),
   skat_o = skatOMeta(scores, SNPInfo=snp_info, burden.wts = function(maf) { dbeta(maf, 1, 25) }, method = skat_o_method)
   print(format(head(skat_o), digits=2))
   
@@ -248,16 +234,22 @@ check_and_prepare_parameters = function(parameters) {
   }
 
   parameters$model_formula = prepare_formula(parameters$phenotype_col, parameters$covariate_cols)
-  
+
   print("Parameter dump:")
   print(parameters)  
   parameters
 }
 
 clean_previous_output = function(parameters) {
-  print("Clean previous output files")
-  file.remove(parameters$sv_output_file)
-  file.remove(parameters$group_output_file)
+  if (file.exists(parameters$sv_output_file)) {
+    print("Clean previous SV output file")
+    file.remove(parameters$sv_output_file)
+  }
+
+  if (file.exists(parameters$group_output_file)) {
+    print("Clean previous group output file")
+    file.remove(parameters$group_output_file)
+  }
 }
 
 process_group_file = function(parameters, phenotype) {
@@ -278,11 +270,7 @@ process_group_file = function(parameters, phenotype) {
     # TODO chromosome might not be coded in variant identifier
     line_chr = unlist(strsplit(snps[1], ":", fixed=T)[[1]])[1]
     if (parameters$chr == line_chr) {
-      process_gene(parameters$chr, parameters$bgen_path, 
-                   gene, snps, phenotype, 
-                   parameters$model_formula, 
-                   parameters$sv_output_file, parameters$group_output_file, 
-                   parameters$skat_o_method, write_header)
+      process_gene(parameters, gene, snps, phenotype, write_header)
       write_header = F
     }
   }
