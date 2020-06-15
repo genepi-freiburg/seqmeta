@@ -83,7 +83,7 @@ do_top_results = function(top_out_file, mart_mapping_file, data) {
 	top_results = subset(data, data$burden_p < 0.05)
 
 	mart = read.table(mart_mapping_file, h = T, sep="\t")
-	colnames(mart) = c("gene", "Gene_Symbol", "Gene_Chr", "Gene_Start_b38")
+	colnames(mart) = c("gene", "Gene_Symbol", "Gene_Start_b38", "Gene_Chr")
 
 	top_results_annotated = merge(top_results, mart, all.x=T)
 	top_results_annotated = top_results_annotated[order(top_results_annotated$burden_p), ]
