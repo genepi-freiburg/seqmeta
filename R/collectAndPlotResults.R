@@ -44,7 +44,9 @@ read_data = function(group_output_files) {
 		data = rbind(d, data)
 	}
 
-	summary(data)
+	print(summary(data))
+
+	data
 }
 
 do_qq_plot = function(p, title) {
@@ -70,9 +72,9 @@ do_qq_plot = function(p, title) {
 do_qq_plots = function(qq_plot_out_file, data) {
 	pdf(qq_plot_out_file)
 
-	do_qq_plot(data$burden_p, title = "QQ plot, eGFR_crea, Burden test")
-	do_qq_plot(data$skat_p, title = "QQ plot, eGFR_crea, SKAT test")
-	do_qq_plot(data$skat_o_p, title = "QQ plot, eGFR_crea, SKAT-O test")
+	do_qq_plot(data$burden_p, title = "QQ plot, Burden test")
+	do_qq_plot(data$skat_p, title = "QQ plot, SKAT test")
+	do_qq_plot(data$skat_o_p, title = "QQ plot, SKAT-O test")
 
 	dev.off()
 }
@@ -104,7 +106,7 @@ plot_and_annotate = function() {
 	mart_mapping_file = options$mart_mapping_file
 
 	data = read_data(group_output_files)
-	do_qq_plots(qq_plot_pout_file, data)
+	do_qq_plots(qq_plot_out_file, data)
 	do_top_results(top_out_file, mart_mapping_file, data)
 }
 
