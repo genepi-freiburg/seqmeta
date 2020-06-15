@@ -110,10 +110,13 @@ symbols(x = e_nonmiss$pos/1000,
         bg = "steelblue2", 
         fg = NULL)
 
+maxMinusLog10p = max(e_nonmiss$log_p)
+
 title(main = paste(e_nonmiss[1,"gene"], e_nonmiss[1,"symbol"], sep=" / "),
       xlab = "Position [kb]", 
       ylab = "Effect Size",
-      sub = "Dot size represents -log10(p)")
+      sub = paste("Dot size represents -log10(p); max(-log10(p)) = ", round(maxMinusLog10p, 1),
+                  "; n = ", nrow(e_nonmiss), " SNVs", sep=""))
 
 abline(h=0, col="darkgray")
 
