@@ -1,6 +1,9 @@
-#!/usr/local/R/R-3.6.3/bin/Rscript
+#!/usr/local/bin/Rscript
+##!/usr/local/R/R-3.6.3/bin/Rscript
 
+print("Load R packages")
 library(optparse)
+library(biomaRt)
 
 parse_options = function() {
   option_list = list(
@@ -96,6 +99,15 @@ e_nonmiss$log_p = -log10(e_nonmiss$p)
 
 print(summary(e_nonmiss))
 
+print("====== Query BioMart for exons")
+
+ensembl = useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", host = "uswest.ensembl.org")
+exons = getBM(attributes = c('ensembl_exon_id', 'exon_chrom_start', 'exon_chrom_end', 'rank'),
+              filters = 'ensembl_gene_id', values = gene, mart = ensembl)
+#print(head(exons))
+print(exons)
+print(paste("Got ", nrow(exons), " exons for ", gene, ".", sep = ""))
+
 print("====== Plot")
 
 out_fn = gsub("%SYMBOL%", symbol, out_fn)
@@ -111,12 +123,20 @@ symbols(x = e_nonmiss$pos/1000,
         fg = NULL)
 
 maxMinusLog10p = max(e_nonmiss$log_p)
+maxEffect = max(e_nonmiss$beta)
 
 title(main = paste(e_nonmiss[1,"gene"], e_nonmiss[1,"symbol"], sep=" / "),
       xlab = "Position [kb]", 
       ylab = "Effect Size",
       sub = paste("Dot size represents -log10(p); max(-log10(p)) = ", round(maxMinusLog10p, 1),
                   "; n = ", nrow(e_nonmiss), " SNVs", sep=""))
+
+rectHeight = 0.05 * maxEffect
+rect(border = "black", col = "gray",
+     xleft = exons$exon_chrom_start / 1000, xright = exons$exon_chrom_end / 1000,
+     ytop = rectHeight, ybottom = -rectHeight)
+#text(x = (exons$exon_chrom_start + (exons$exon_chrom_end - exons$exon_chrom_start) / 2) / 1000, 
+#     y = rep(0, nrow(exons)), labels = exons$rank)
 
 abline(h=0, col="darkgray")
 
