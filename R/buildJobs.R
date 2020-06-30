@@ -244,11 +244,18 @@ build_group_test_jobs = function(parameters, group, phenotype, jobs_fn) {
 build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
 	script_path = get_param(parameters, "COLLECT_SCRIPT_PATH")
 	mart_mapping_file = get_param(parameters, "MART_MAPPING_FILE")
+	filter_formula = get_param(parameters, "FILTER_FORMULA")
 
         output_dir = get_param(parameters, "OUTPUT_DIRECTORY")
         log_dir = get_param(parameters, "LOG_DIRECTORY")
         job_name = paste(group, phenotype, sep="_")
         log_fn = paste(log_dir, "/", job_name, "-collect-%j.log", sep="")
+
+	qq_fn = paste(output_dir, "/", group, "-",
+		phenotype, "-qq.pdf", sep="")
+
+	xlsx_fn = paste(output_dir, "/", group, "-",
+		phenotype, "-top.xlsx", sep="")
 
         group_result_fn = paste(output_dir, "/group-", group, "-", 
 		phenotype, "-chr%CHR%.txt", sep="")
@@ -260,7 +267,10 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
                 " --error=\"", log_fn, "\" \\\n",
 		" ", script_path, " \\\n",
 		" --group_result_files=\"", group_result_fn, "\" \\\n",
-		" --mart_mapping_file=", mart_mapping_file, " \n",
+		" --mart_mapping_file=", mart_mapping_file, " \\\n",
+		" --qq_plot_output_file=\"", qq_fn, "\" \\\n",
+		" --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
+		" --filter_formula=\"", filter_formula, "\"\n",
 		"\n\n",
 		sep="")
 

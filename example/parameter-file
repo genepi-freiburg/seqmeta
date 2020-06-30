@@ -29,6 +29,9 @@ BGEN_PATH=/data/studies/06_UKBB/Exome_50k/03_Merge_GWAS_WES/wes/wes_imp_bgen/ukb
 
 ## Global options
 
+# criteria for selecting top results (xlsx)
+FILTER_FORMULA="burden_p < 0.01"
+
 # group test script path (relative or absolute)
 GROUP_TEST_SCRIPT_PATH="../PIPELINE/R/groupTest.R"
 COLLECT_SCRIPT_PATH="../PIPELINE/R/collectAndPlotResults.R"
