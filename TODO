@@ -1,2 +1,2 @@
-add multi script for multiple models / phenotypes
-- include interesting gene filtering and plotting
+- include interesting gene filtering and plotting in the collectAndPlot file (as option)
+- enhance plotting script
