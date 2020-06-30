@@ -1,0 +1,41 @@
+## PHENOTYPES
+# phenotype file (tab-separated)
+PHENOTYPE_FILE=phenotype.txt
+
+# names of the phenotypes (columns) to examine
+PHENOTYPES=egfr_ckdepi_creat,bun_serum,egfr_ckdepi_creat_cys,egfr_ckdepi_cys,uric_acid_serum
+
+# individual ID column name
+INDIVIDUAL_ID_COLUMN="individual_id"
+
+# covariates to use for all phenotypes
+COVARIATES=age_crea_serum,sex_male,U1,U2
+
+# covariates to use only for specific phenotypes
+COVARIATE_egfr_ckdepi_creat=U3
+
+## GROUP DEFINITION
+
+# group identifiers (shortcut)
+#GROUPS=rareDmg,syn
+GROUPS=rareDmg
+
+# paths for individual group files
+GROUP_PATH_rareDmg=/data/studies/06_UKBB/Exome_50k/06_seqMeta/GROUP/03_rareDamaging/group_file.txt
+GROUP_PATH_syn=/data/studies/06_UKBB/Exome_50k/06_seqMeta/GROUP/02_synonymous/group_file.txt
+
+## GENOTYPES
+BGEN_PATH=/data/studies/06_UKBB/Exome_50k/03_Merge_GWAS_WES/wes/wes_imp_bgen/ukb_wes_efe-chr%CHR%.bgen
+
+## Global options
+
+# group test script path (relative or absolute)
+GROUP_TEST_SCRIPT_PATH="../PIPELINE/R/groupTest.R"
+COLLECT_SCRIPT_PATH="../PIPELINE/R/collectAndPlotResults.R"
+MART_MAPPING_FILE="/data/studies/06_UKBB/Exome_50k/06_seqMeta/PIPELINE/biomart/mart_export_genes.txt"
+
+# output directory, may be relative or absolute path, must not end with /
+OUTPUT_DIRECTORY="output"
+LOG_DIRECTORY="logs"
+
+
