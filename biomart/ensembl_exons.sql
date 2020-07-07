@@ -1,7 +1,7 @@
 CREATE TABLE exons (
   ensembl_gene_id varchar(30),
-  ensembl_chrom_start int,
-  ensembl_chrom_end int,
+  exon_chrom_start int,
+  exon_chrom_end int,
   ensembl_exon_id varchar(30),
   rank int
 );

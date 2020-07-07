@@ -3,13 +3,16 @@
 
 print("Load R packages")
 library(optparse)
-library(biomaRt)
+#library(biomaRt)
+library(DBI)
 
 parse_options = function() {
   option_list = list(
+    make_option("--title", help="Plot title (Phenotype, group file)"),
     make_option("--gene_to_plot", help="Gene to plot (may use symbol or Ensembl ID)"),
     make_option("--sv_path", help="Path/filename of single variant association results (may use %CHR%)"),
     make_option("--mart_mapping_file", help="File with ENSG mappings", default="mart_export.txt"),
+    make_option("--exon_db", help="SQLite3 exon DB", default="ensembl_exons.sqlite"),
     make_option("--pdf_output_path", help="Path/filename of PDF output file. May use %SYMBOL%", default="plot_%SYMBOL%.pdf")
   )
 
@@ -99,14 +102,18 @@ e_nonmiss$log_p = -log10(e_nonmiss$p)
 
 print(summary(e_nonmiss))
 
-print("====== Query BioMart for exons")
+print("====== Query SQLite3 for exons")
 
-ensembl = useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", host = "uswest.ensembl.org")
-exons = getBM(attributes = c('ensembl_exon_id', 'exon_chrom_start', 'exon_chrom_end', 'rank'),
-              filters = 'ensembl_gene_id', values = gene, mart = ensembl)
-#print(head(exons))
-print(exons)
-print(paste("Got ", nrow(exons), " exons for ", gene, ".", sep = ""))
+#ensembl = useEnsembl(biomart = "ensembl", dataset = "hsapiens_gene_ensembl", host = "uswest.ensembl.org")
+#exons = getBM(attributes = c('ensembl_exon_id', 'exon_chrom_start', 'exon_chrom_end', 'rank'),
+#              filters = 'ensembl_gene_id', values = gene, mart = ensembl)
+
+
+exon_db = dbConnect(RSQLite::SQLite(), opts$exon_db)
+exons = dbGetQuery(exon_db, paste("SELECT DISTINCT exon_chrom_start, exon_chrom_end FROM exons WHERE ensembl_gene_id = \"", gene, "\"", sep=""))
+dbDisconnect(exon_db)
+
+print(paste("Got ", nrow(exons), " exon positions for ", gene, ".", sep = ""))
 
 print("====== Plot")
 
@@ -114,31 +121,68 @@ out_fn = gsub("%SYMBOL%", symbol, out_fn)
 print(paste("Write plot to:", out_fn))
 pdf(out_fn)
 
-symbols(x = e_nonmiss$pos/1000, 
-        y = e_nonmiss$beta, 
-        circles = sqrt(e_nonmiss$log_p/pi), # surface-proportional
+x = e_nonmiss$pos/1000
+y = e_nonmiss$beta
+
+minx = round(min(c(x, exons$exon_chrom_start/1000)))
+maxx = round(max(c(x, exons$exon_chrom_end/1000)))
+
+miny = min(y - e_nonmiss$se)
+maxy = max(y + e_nonmiss$se)
+
+circle_size = sqrt(e_nonmiss$log_p/pi) # surface-proportional
+
+symbols(x = x, y = y, 
+        circles = circle_size,
+        inches = 1/8,
+        ann = F, 
+        xlim = c(minx, maxx),
+        ylim = c(miny, maxy),
+        bty = "n")
+
+arrows(x, y - e_nonmiss$se, x, y + e_nonmiss$se, length=0.05, angle=90, code=3, col="gray")
+
+symbols(x = x, y = y, 
+        circles = circle_size,
         inches = 1/8,
         ann = F, 
         bg = "steelblue2", 
-        fg = NULL)
+        fg = "black",
+        add = T,
+        bty = "n")
 
 maxMinusLog10p = max(e_nonmiss$log_p)
+minMinusLog10p = min(e_nonmiss$log_p)
 maxEffect = max(e_nonmiss$beta)
 
-title(main = paste(e_nonmiss[1,"gene"], e_nonmiss[1,"symbol"], sep=" / "),
+# e_nonmiss[1,"gene"],
+title(main = paste(opts$title, e_nonmiss[1,"symbol"], sep=" / "),
       xlab = "Position [kb]", 
       ylab = "Effect Size",
-      sub = paste("Dot size represents -log10(p); max(-log10(p)) = ", round(maxMinusLog10p, 1),
+      sub = paste("max(-log10(p)) = ", round(maxMinusLog10p, 1),
                   "; n = ", nrow(e_nonmiss), " SNVs", sep=""))
 
+abline(h=0, col="darkgray")
+
 rectHeight = 0.05 * maxEffect
+
 rect(border = "black", col = "gray",
      xleft = exons$exon_chrom_start / 1000, xright = exons$exon_chrom_end / 1000,
      ytop = rectHeight, ybottom = -rectHeight)
-#text(x = (exons$exon_chrom_start + (exons$exon_chrom_end - exons$exon_chrom_start) / 2) / 1000, 
-#     y = rep(0, nrow(exons)), labels = exons$rank)
 
-abline(h=0, col="darkgray")
+legend_count = 4
+legend_entries = (max(circle_size) / legend_count) * 1:legend_count
+legend_labels = round((legend_entries ^ 2) * pi, 1)
+  
+legend(x = "topright",
+       ncol = 1,
+       pch = 21, 
+       pt.cex = legend_entries,
+       legend = legend_labels,
+       pt.bg = "steelblue2",
+       bg = "transparent",
+       title = as.expression(bquote(paste('-log'['10']*'(p)')))
+)
 
 dev.off()
 
