@@ -1,2 +1,3 @@
-- include interesting gene filtering and plotting in the collectAndPlot file (as option)
-- enhance plotting script
+- script generator needs to use new options for the collectAndPlot for the TSV file
+- need to have script that takes the gene TSV and drives the plotGenes script
+
