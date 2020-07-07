@@ -257,6 +257,9 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
 	xlsx_fn = paste(output_dir, "/", group, "-",
 		phenotype, "-top.xlsx", sep="")
 
+	tsv_fn = paste(output_dir, "/", group, "-",
+		phenotype, "-top.txt", sep="")
+
         group_result_fn = paste(output_dir, "/group-", group, "-", 
 		phenotype, "-chr%CHR%.txt", sep="")
 
@@ -269,6 +272,7 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
 		" --group_result_files=\"", group_result_fn, "\" \\\n",
 		" --mart_mapping_file=", mart_mapping_file, " \\\n",
 		" --qq_plot_output_file=\"", qq_fn, "\" \\\n",
+		" --top_tsv_output_file=\"", tsv_fn, "\" \\\n",
 		" --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
 		" --filter_formula=\"", filter_formula, "\"\n",
 		"\n\n",
