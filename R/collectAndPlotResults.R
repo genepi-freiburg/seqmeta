@@ -9,7 +9,8 @@ parse_options = function() {
   option_list = list(
     make_option("--group_result_files", help="Files containing group-based test results (needs to have %CHR% if files are split by chromosome)"),
     make_option("--qq_plot_output_file", help="Path/filename of PDF output file for QQ plot", default="qq_plots.pdf"),
-    make_option("--top_xlsx_output_file", help="Path/filename of XLSX output file for top results", default="top_results_burden_p0.05.xlsx"),
+    make_option("--top_tsv_output_file", help="Path/filename of TSV output file for top results", default="top_results.tsv"),
+    make_option("--top_xlsx_output_file", help="Path/filename of XLSX output file for top results", default="top_results.xlsx"),
     make_option("--filter_formula", help="Formula to filter results, default: 'burden_p < 0.05'", default="burden_p < 0.05"),
     make_option("--mart_mapping_file", help="File with ENSG mappings", default="mart_export.txt")
   )
@@ -80,7 +81,7 @@ do_qq_plots = function(qq_plot_out_file, data) {
 	dev.off()
 }
 
-do_top_results = function(top_out_file, filter_str, mart_mapping_file, data) {
+do_top_results = function(top_xlsx_out_file, top_tsv_out_file, filter_str, mart_mapping_file, data) {
 	expr = parse(text=filter_str)
 	print(paste("Filter data using expression: ", expr, sep=""))
 	top_results = subset(data, eval(expr, envir = data))
@@ -96,8 +97,16 @@ do_top_results = function(top_out_file, filter_str, mart_mapping_file, data) {
 		print("There are gene IDs without symboles.")
 	}
 
-	print("Writing XLSX")
-	write.xlsx(top_results_annotated, top_out_file, row.names=F, col.names=T)
+	if (nchar(top_xlsx_out_file) > 0) {
+		print("Writing XLSX")
+		write.xlsx(top_results_annotated, top_xlsx_out_file, row.names=F, col.names=T)
+	}
+
+	if (nchar(top_tsv_out_file) > 0) {
+		print("Writing TSV")
+		write.table(top_results_annotated, top_tsv_out_file, row.names=F, col.names=T, quote=F, sep="\t")
+	}
+
 	return(top_results_annotated)
 }
 
@@ -112,7 +121,7 @@ plot_and_annotate = function() {
 
 	data = read_data(group_output_files)
 	do_qq_plots(qq_plot_out_file, data)
-	do_top_results(top_out_file, options$filter_formula, mart_mapping_file, data)
+	do_top_results(top_out_file, options$top_tsv_output_file, options$filter_formula, mart_mapping_file, data)
 }
 
 plot_and_annotate()
