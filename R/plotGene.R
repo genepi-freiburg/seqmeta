@@ -9,6 +9,8 @@ parse_options = function() {
   option_list = list(
     make_option("--title", help="Plot title (Phenotype, group file)"),
     make_option("--genes_to_plot", help="Gene(s) to plot (may use symbol or Ensembl ID); may give multiple genes separated by comma"),
+    make_option("--top_file", help="Gene(s) to plot; to be loaded from 'top results' file"),
+    make_option("--top_file_formula", help="Filtering formula for 'top results' file"),
     make_option("--sv_path", help="Path/filename of single variant association results (may use %CHR%)"),
     make_option("--mart_mapping_file", help="File with ENSG mappings", default="mart_export.txt"),
     make_option("--exon_db", help="SQLite3 exon DB", default="ensembl_exons.sqlite"),
@@ -34,10 +36,10 @@ prepare_mart_mapping = function(opts) {
   return(mapping)
 }
 
-find_exons_for_gene = function(ops, gene) {
+find_exons_for_gene = function(opts, gene) {
   print("====== Query SQLite3 for exons")
   
-  exon_db = dbConnect(RSQLite::SQLite(), opts$exon_db)
+  exon_db = dbConnect(RSQLite::SQLite(), opts$exon_db, synchronous = NULL)
   exons = dbGetQuery(exon_db, paste("SELECT DISTINCT exon_chrom_start, exon_chrom_end FROM exons WHERE ensembl_gene_id = \"", gene, "\"", sep=""))
   dbDisconnect(exon_db)
   
@@ -251,10 +253,31 @@ load_and_plot = function(opts, mapping, gene_to_plot) {
   do_plot(opts, e_nonmiss, exons)
 }
 
+find_genes_to_plot_from_top_file = function(opts) {
+  top = read.table(opts$top_file, h = T)
+  print(paste("Loaded ", nrow(top), " genes from file: ", opts$top_file, sep = ""))
+  
+  expr = parse(text = opts$top_file_formula)
+  print(paste("Filter top results using expression: ", expr, sep=""))
+  top2 = subset(top, eval(expr, envir = top))
+  print(paste("Got ", nrow(top2), " filtered results.", sep=""))
+  
+  return(top2$gene)
+}
+
 plot_genes = function(opts) {
   mapping = prepare_mart_mapping(opts)
   
-  genes_to_plot = trimws(unlist(strsplit(opts$genes_to_plot, ",", fixed=T)[[1]]))
+  genes_to_plot = c()
+  
+  if (length(opts$genes_to_plot) > 0) {
+    genes_to_plot = trimws(unlist(strsplit(opts$genes_to_plot, ",", fixed=T)[[1]]))
+  }
+  
+  if (length(genes_to_plot) == 0) {
+    genes_to_plot = find_genes_to_plot_from_top_file(opts)
+  }
+
   if (length(genes_to_plot) == 0) {
     stop("Need genes to plot.")
   }
