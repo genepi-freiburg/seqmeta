@@ -169,15 +169,14 @@ do_plot = function(opts, e_nonmiss, exons) {
         sub = paste("max(-log10(p)) = ", round(maxMinusLog10p, 1),
                     "; n = ", nrow(e_nonmiss), " SNVs", sep=""))
   
-  abline(h=0, col="darkgray")
-  lines(x = c(min(exons$exon_chrom_start)/1000, max(exons$exon_chrom_end)/1000),
+    lines(x = c(min(exons$exon_chrom_start)/1000, max(exons$exon_chrom_end)/1000),
        y = c(0, 0),
        col = "darkgray")
   
   if (nrow(exons) > 0) {
     rectHeight = 0.05 * maxEffect
     
-    rect(border = "black", col = "gray",
+    rect(border = "gray", col = "gray",
          xleft = exons$exon_chrom_start / 1000, xright = exons$exon_chrom_end / 1000,
          ytop = rectHeight, ybottom = -rectHeight)
   }
@@ -186,6 +185,9 @@ do_plot = function(opts, e_nonmiss, exons) {
   legend_entries = (max(circle_size) / legend_count) * 1:legend_count
   legend_labels = round((legend_entries ^ 2) * pi, 1)
   
+  # cex=3.3 makes a circle of 1/8 inch size
+  legend_entries = (3.3 / legend_count) * 1:legend_count
+
   legend(x = "topright",
          ncol = 1,
          pch = 21, 
@@ -194,6 +196,7 @@ do_plot = function(opts, e_nonmiss, exons) {
          pt.bg = "steelblue2",
          bg = "transparent",
          inset=c(-0.2,0),
+         y.intersp = 1.5,
          title = as.expression(bquote(paste('-log'['10']*'(p)')))
   )
   
