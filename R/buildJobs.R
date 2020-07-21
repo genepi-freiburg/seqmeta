@@ -195,7 +195,9 @@ check_path = function(parameters, param) {
 check_paths = function(parameters) {
 	check_path(parameters, "GROUP_TEST_SCRIPT_PATH")
 	check_path(parameters, "COLLECT_SCRIPT_PATH")
+	check_path(parameters, "PLOT_SCRIPT_PATH")
 	check_path(parameters, "MART_MAPPING_FILE")
+	check_path(parameters, "EXON_DB_FILE")
 }
 
 check_parameters = function(parameters) {
@@ -268,7 +270,6 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
 	script_path = get_param(parameters, "COLLECT_SCRIPT_PATH")
 	mart_mapping_file = get_param(parameters, "MART_MAPPING_FILE")
 	filter_formula = get_param(parameters, "FILTER_FORMULA")
-	top_formula = get_param(parameters, "PLOT_FORMULA")
 
         output_dir = get_param(parameters, "OUTPUT_DIRECTORY")
         log_dir = get_param(parameters, "LOG_DIRECTORY")
@@ -305,45 +306,46 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
         cat(command, file = jobs_fn, append = T)
 }
 
-# BUILD PLOT JOB
-        #TITLE=`echo $FN|sed 's/output.//' | sed 's/-top.txt//'`
-        #SV="output/sv-$TITLE-chr%CHR%.txt"
+build_plot_genes_job = function(parameters, group, phenotype, jobs_fn) {
+        script_path = get_param(parameters, "PLOT_SCRIPT_PATH")
+        mart_mapping_file = get_param(parameters, "MART_MAPPING_FILE")
+        exon_db_file = get_param(parameters, "EXON_DB_FILE")
+        plot_formula = get_param(parameters, "PLOT_FORMULA")
 
-        #echo "Title: $TITLE"
-        #echo "SV: $SV"
+        output_dir = get_param(parameters, "OUTPUT_DIRECTORY")
+        log_dir = get_param(parameters, "LOG_DIRECTORY")
+        job_name = paste(group, phenotype, sep="_")
+        log_fn = paste(log_dir, "/", job_name, "-plot-%j.log", sep="")
 
-        #../PIPELINE/R/plotGene.R --title="$TITLE" \
-        #--top_file=$FN \
-        #--sv_path=$SV \
-        #--mart_mapping_file=../PIPELINE/biomart/mart_export_genes.txt \
-        #--exon_db=../PIPELINE/biomart/ensembl_exons.sqlite \
-        #--pdf_output_path=top_plots/genePlot_${TITLE}_%SYMBOL%.pdf \
-        #--top_file_formula="burden_nsnpsTotal > 5 & burden_p < 1e-3"
+	title = paste(group, "-", phenotype, sep="")
 
-        #log_fn = paste(log_dir, "/", job_name, "-plot-%j.log", sep="")
+        top_file_fn = paste(output_dir, "/", group, "-", phenotype, "-top.txt", sep="")
+	sv_file_fn = paste(output_dir, "/sv-", group, "-", phenotype, "-chr%CHR%.txt", sep="")
+	plot_file_pattern = paste(output_dir, "/genePlot_", title, "_%SYMBOL%.pdf", sep="") 
 
-        #command = paste("sbatch \\\n",
-	#	" --dependency=singleton \\\n",
-        #       " --job-name=", job_name, " \\\n",
-        #       " --output=\"", log_fn, "\" \\\n",
-        #       " --error=\"", log_fn, "\" \\\n",
-	#	" ", script_path, " \\\n",
-	#	" --group_result_files=\"", group_result_fn, "\" \\\n",
-	#	" --mart_mapping_file=", mart_mapping_file, " \\\n",
-	#	" --qq_plot_output_file=\"", qq_fn, "\" \\\n",
-	#	" --top_tsv_output_file=\"", tsv_fn, "\" \\\n",
-	#	" --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
-	#	" --filter_formula=\"", filter_formula, "\"\n",
-	#	"\n\n",
-	#	sep="")
-	#cat(command, file = jobs_fn, append = T)
+        command = paste("sbatch \\\n",
+                " --dependency=singleton \\\n",
+                " --job-name=", job_name, " \\\n",
+                " --output=\"", log_fn, "\" \\\n",
+                " --error=\"", log_fn, "\" \\\n",
+                " ", script_path, " \\\n",
+		" --title=\"", title, "\" \\\n",
+		" --top_file=\"", top_file_fn, "\" \\\n",
+		" --sv_path=\"", sv_file_fn, "\" \\\n",
+		" --mart_mapping_file=\"", mart_mapping_file, "\" \\\n",
+		" --exon_db=\"", exon_db_file, "\" \\\n",
+		" --pdf_output_path=\"", plot_file_pattern, "\" \\\n",
+		" --top_file_formula=\"", plot_formula, "\"\n\n\n", sep="")
 
+	cat(command, file = jobs_fn, append = T)
+}
 
 build_jobs_for_phenotype = function(parameters, groups, phenotype, phenotype_type, jobs_fn) {
 	for (group in groups) {
 		cat(paste("#### ", phenotype, "\n", sep=""), file=jobs_fn, append=T)
 		build_group_test_jobs(parameters, group, phenotype, phenotype_type, jobs_fn)
 		build_collect_and_plot_job(parameters, group, phenotype, jobs_fn)
+		build_plot_genes_job(parameters, group, phenotype, jobs_fn)
 	}
 }
 

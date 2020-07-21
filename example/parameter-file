@@ -41,11 +41,23 @@ PLOT_FORMULA="burden_nsnpsTotal > 5 & burden_p < 1e-3"
 
 # group test script path (relative or absolute)
 GROUP_TEST_SCRIPT_PATH="../PIPELINE/R/groupTest.R"
+
+# collect and plot script path (relative or absolute)
 COLLECT_SCRIPT_PATH="../PIPELINE/R/collectAndPlotResults.R"
+
+# plot gene script path (relative or absolute)
+PLOT_SCRIPT_PATH="../PIPELINE/R/plotGene.R"
+
+# MART mapping file (with Ensembl Gene IDs and Gene symbols)
 MART_MAPPING_FILE="/data/studies/06_UKBB/Exome_50k/06_seqMeta/PIPELINE/biomart/mart_export_genes.txt"
+
+# Exon SQLite database
+EXON_DB_FILE="/data/studies/06_UKBB/Exome_50k/06_seqMeta/PIPELINE/biomart/ensembl_exons.sqlite"
 
 # output directory, may be relative or absolute path, must not end with /
 OUTPUT_DIRECTORY="output"
+
+# log directory, may be relative or absolute path, must not end with /
 LOG_DIRECTORY="logs"
 
 
