@@ -3,7 +3,11 @@
 PHENOTYPE_FILE=phenotype.txt
 
 # names of the phenotypes (columns) to examine
-PHENOTYPES=egfr_ckdepi_creat,bun_serum,egfr_ckdepi_creat_cys,egfr_ckdepi_cys,uric_acid_serum
+#PHENOTYPES=egfr_ckdepi_creat,bun_serum,egfr_ckdepi_creat_cys,egfr_ckdepi_cys,uric_acid_serum
+PHENOTYPES=egfr_ckdepi_creat,ckd
+
+# phenotype types (Q=quantitative, B=binary); one per phenotype
+PHENOTYPE_TYPES=Q,B
 
 # individual ID column name
 INDIVIDUAL_ID_COLUMN="individual_id"
@@ -31,6 +35,9 @@ BGEN_PATH=/data/studies/06_UKBB/Exome_50k/03_Merge_GWAS_WES/wes/wes_imp_bgen/ukb
 
 # criteria for selecting top results (xlsx)
 FILTER_FORMULA="burden_p < 0.01"
+
+# criteria for selecting genes to plot
+PLOT_FORMULA="burden_nsnpsTotal > 5 & burden_p < 1e-3"
 
 # group test script path (relative or absolute)
 GROUP_TEST_SCRIPT_PATH="../PIPELINE/R/groupTest.R"

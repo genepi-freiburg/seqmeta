@@ -58,22 +58,38 @@ parse_phenotypes = function(parameters) {
         strsplit(phenotype_columns_str, ",", fixed=T)[[1]]
 }
 
+parse_phenotype_types = function(parameters) {
+        phenotype_columns_str = get_param(parameters, "PHENOTYPE_TYPES")
+        strsplit(phenotype_columns_str, ",", fixed=T)[[1]]
+}
+
 check_phenotype_vars = function(parameters, data) {
 	phenotype_columns = parse_phenotypes(parameters)
 	if (length(phenotype_columns) == 0) {
 		stop("No phenotypes given - use parameter PHENOTYPES.")
 	}
 
+	phenotype_types = parse_phenotype_types(parameters)
+	if (length(phenotype_types) != length(phenotype_columns)) {
+		stop("Need one phenotype type per phenotype column - check PHENOTYPE_TYPES")
+	}
+
 	available_columns = colnames(data)
 
+	i = 1
 	for (phenotype in phenotype_columns) {
 		print(paste("Check phenotype column: ", phenotype, sep=""))
 		if (!(phenotype %in% available_columns)) {
 			stop(paste("Phenotype not found: ", phenotype, sep=""))
 		}
+		print(paste("Phenotype type: ", phenotype_types[i], sep=""))
+		if (phenotype_types[i] != "B" && phenotype_types[i] != "Q") {
+			stop(paste("Need B or Q as phenotype type for: ", phenotype, sep=""))
+		}
+		i = i + 1
 	}
 
-	phenotype_columns
+	return(phenotype_columns)
 }
 
 check_global_covariates = function(parameters, data) {
@@ -186,6 +202,7 @@ check_parameters = function(parameters) {
 	check_groups(parameters)
 	check_phenotypes_and_covariates(parameters)
 	check_paths(parameters)
+	return(parameters)
 }
 
 read_and_check_parameters = function(args) {
@@ -204,7 +221,7 @@ make_covar_cols = function(parameters, phenotype) {
 	}
 }
 
-build_group_test_jobs = function(parameters, group, phenotype, jobs_fn) {
+build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, jobs_fn) {
 	script_path = get_param(parameters, "GROUP_TEST_SCRIPT_PATH")
 	bgen_path = get_param(parameters, "BGEN_PATH")
 	pheno_path = get_param(parameters, "PHENOTYPE_FILE")
@@ -220,6 +237,11 @@ build_group_test_jobs = function(parameters, group, phenotype, jobs_fn) {
 
 	group_fn = get_param(parameters, paste("GROUP_PATH_", group, sep=""))
 
+	my_type = "quantitative"
+	if (phenotype_type == "B") {
+		my_type = "binary"
+	}
+
 	for (chr in 1:22) {
 		log_fn = paste(log_dir, "/", job_name, "-chr", chr, "-%j.log", sep="")
 		command = paste("sbatch \\\n",
@@ -232,6 +254,7 @@ build_group_test_jobs = function(parameters, group, phenotype, jobs_fn) {
 			" --group_file=\"", group_fn, "\" \\\n",
 			" --phenotype_file=\"", pheno_path, "\" \\\n",
 			" --phenotype_col=", phenotype, " \\\n",
+			" --phenotype_type=", my_type, " \\\n",
 			" --covariate_cols=\"", covar_cols, "\" \\\n",
 			" --sv_output_path=\"", output_dir, "/sv-", group, "-%PHENO%-chr%CHR%.txt\" \\\n",
 			" --group_output_path=\"", output_dir, "/group-", group, "-%PHENO%-chr%CHR%.txt\"\n",
@@ -245,6 +268,7 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
 	script_path = get_param(parameters, "COLLECT_SCRIPT_PATH")
 	mart_mapping_file = get_param(parameters, "MART_MAPPING_FILE")
 	filter_formula = get_param(parameters, "FILTER_FORMULA")
+	top_formula = get_param(parameters, "PLOT_FORMULA")
 
         output_dir = get_param(parameters, "OUTPUT_DIRECTORY")
         log_dir = get_param(parameters, "LOG_DIRECTORY")
@@ -264,27 +288,61 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
 		phenotype, "-chr%CHR%.txt", sep="")
 
         command = paste("sbatch \\\n",
-		" --dependency=singleton \\\n",
+                " --dependency=singleton \\\n",
                 " --job-name=", job_name, " \\\n",
                 " --output=\"", log_fn, "\" \\\n",
                 " --error=\"", log_fn, "\" \\\n",
-		" ", script_path, " \\\n",
-		" --group_result_files=\"", group_result_fn, "\" \\\n",
-		" --mart_mapping_file=", mart_mapping_file, " \\\n",
-		" --qq_plot_output_file=\"", qq_fn, "\" \\\n",
-		" --top_tsv_output_file=\"", tsv_fn, "\" \\\n",
-		" --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
-		" --filter_formula=\"", filter_formula, "\"\n",
-		"\n\n",
-		sep="")
+                " ", script_path, " \\\n",
+                " --group_result_files=\"", group_result_fn, "\" \\\n",
+                " --mart_mapping_file=", mart_mapping_file, " \\\n",
+                " --qq_plot_output_file=\"", qq_fn, "\" \\\n",
+                " --top_tsv_output_file=\"", tsv_fn, "\" \\\n",
+                " --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
+                " --filter_formula=\"", filter_formula, "\"\n",
+                "\n\n",
+                sep="")
 
-	cat(command, file = jobs_fn, append = T)
+        cat(command, file = jobs_fn, append = T)
 }
 
-build_jobs_for_phenotype = function(parameters, groups, phenotype, jobs_fn) {
+# BUILD PLOT JOB
+        #TITLE=`echo $FN|sed 's/output.//' | sed 's/-top.txt//'`
+        #SV="output/sv-$TITLE-chr%CHR%.txt"
+
+        #echo "Title: $TITLE"
+        #echo "SV: $SV"
+
+        #../PIPELINE/R/plotGene.R --title="$TITLE" \
+        #--top_file=$FN \
+        #--sv_path=$SV \
+        #--mart_mapping_file=../PIPELINE/biomart/mart_export_genes.txt \
+        #--exon_db=../PIPELINE/biomart/ensembl_exons.sqlite \
+        #--pdf_output_path=top_plots/genePlot_${TITLE}_%SYMBOL%.pdf \
+        #--top_file_formula="burden_nsnpsTotal > 5 & burden_p < 1e-3"
+
+        #log_fn = paste(log_dir, "/", job_name, "-plot-%j.log", sep="")
+
+        #command = paste("sbatch \\\n",
+	#	" --dependency=singleton \\\n",
+        #       " --job-name=", job_name, " \\\n",
+        #       " --output=\"", log_fn, "\" \\\n",
+        #       " --error=\"", log_fn, "\" \\\n",
+	#	" ", script_path, " \\\n",
+	#	" --group_result_files=\"", group_result_fn, "\" \\\n",
+	#	" --mart_mapping_file=", mart_mapping_file, " \\\n",
+	#	" --qq_plot_output_file=\"", qq_fn, "\" \\\n",
+	#	" --top_tsv_output_file=\"", tsv_fn, "\" \\\n",
+	#	" --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
+	#	" --filter_formula=\"", filter_formula, "\"\n",
+	#	"\n\n",
+	#	sep="")
+	#cat(command, file = jobs_fn, append = T)
+
+
+build_jobs_for_phenotype = function(parameters, groups, phenotype, phenotype_type, jobs_fn) {
 	for (group in groups) {
 		cat(paste("#### ", phenotype, "\n", sep=""), file=jobs_fn, append=T)
-		build_group_test_jobs(parameters, group, phenotype, jobs_fn)
+		build_group_test_jobs(parameters, group, phenotype, phenotype_type, jobs_fn)
 		build_collect_and_plot_job(parameters, group, phenotype, jobs_fn)
 	}
 }
@@ -296,9 +354,12 @@ write_jobs_header = function(jobs_fn) {
 build_jobs = function(parameters, jobs_fn) {
 	write_jobs_header(jobs_fn)
 	phenotypes = parse_phenotypes(parameters)
+        phenotype_types = parse_phenotype_types(parameters)
 	groups = parse_groups(parameters)
+	i = 1
 	for (phenotype in phenotypes) {
-		build_jobs_for_phenotype(parameters, groups, phenotype, jobs_fn)
+		build_jobs_for_phenotype(parameters, groups, phenotype, phenotype_types[i], jobs_fn)
+		i = i + 1
 	}
 	print(paste("Built jobs file: ", jobs_fn, sep=""))
 }
