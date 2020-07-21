@@ -1,18 +1,26 @@
 # SeqMeta Pipeline
 
-The pipeline consists of R and Bash scripts.
-It depends on the following R packages: seqMeta, rbgen
+The pipeline consists mainly of R scripts with a few supporting Bash scripts.
+All R scripts are "executables" and can be used with "--help" to show command options.
+
+It depends on the following R packages:
+* seqMeta - for performing the actual group tests
+* rbgen - for reading `bgen` files
+* optparse - for parsing command line arguments
 
 ## Analysis Workflow
 
 ![Workflow Figure](https://github.com/genepi-freiburg/seqmeta/blob/master/docs/workflow.PNG?raw=true)
 
-## Group Test R Script
+The buildJobs.R script can drive this process for multiple phenotypes and group files
+by producing a shell script that is ready to be used with job schedulers.
 
-Most important script: groupTest.R
+## Group Test Script
 
-R scripts are executables and can be used with "--help" to show command options.
-
+The `groupTest.R` script is the most important script of the pipeline.
+It reads and merges phenotypes and genotypes, taking care of missingness,
+performs association tests and collects the results.
+In one pass, both single-variant and group-based tests are performed.
 
 ```
 Usage: ./groupTest.R [options]
