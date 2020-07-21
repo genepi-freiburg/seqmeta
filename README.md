@@ -162,21 +162,17 @@ PHENOTYPE_TYPES | phenotype types (Q=quantitative, B=binary); one per phenotype 
 INDIVIDUAL_ID_COLUMN |individual ID column name | individual_id
 COVARIATES | covariates to use for all phenotypes | age_crea_serum,sex_male,U1,U2
 COVARIATE_egfr_ckdepi_creat | covariates to use only for specific phenotypes | U3
------------- | ------------- | -------------
 GROUPS | group identifiers (shortcut) | rareDmg,syn
 GROUP_PATH_rareDmg | path to group file | ...../GROUP/03_rareDamaging/group_file.txt
 GROUP_PATH_syn | .../GROUP/02_synonymous/group_file.txt
------------- | ------------- | -------------
 FILTER_FORMULA | criteria for selecting top results (xlsx) | burden_p < 0.01
 PLOT_FORMULA | criteria for selecting genes to plot | burden_nsnpsTotal > 5 & burden_p < 1e-3
------------- | ------------- | -------------
 BGEN_PATH | genotype path, use %CHR% | ..../ukb_wes_efe-chr%CHR%.bgen
 GROUP_TEST_SCRIPT_PATH | group test script path (relative or absolute) | ../PIPELINE/R/groupTest.R
 COLLECT_SCRIPT_PATH | collect and plot script path (relative or absolute) | ../PIPELINE/R/collectAndPlotResults.R
 PLOT_SCRIPT_PATH | plot gene script path (relative or absolute) | ../PIPELINE/R/plotGene.R
 MART_MAPPING_FILE | MART mapping file (with Ensembl Gene IDs and Gene symbols) | .../PIPELINE/biomart/mart_export_genes.txt
 EXON_DB_FILE | Exon SQLite database | ..../PIPELINE/biomart/ensembl_exons.sqlite
------------- | ------------- | -------------
 OUTPUT_DIRECTORY | output directory, may be relative or absolute path, must not end with / | output
 LOG_DIRECTORY | log directory, may be relative or absolute path, must not end with / | logs
 
@@ -197,3 +193,40 @@ Options:
 
 ## BioMart helper files
 
+### Genes Mapping File
+
+Use the script `biomart/export_mart_genes.sh`.
+
+This accesses: http://www.ensembl.org/biomart/martservice
+
+This is the query:
+```xml
+<Query  virtualSchemaName = "default" formatter = "TSV" header = "1" uniqueRows = "1" count = "" datasetConfigVersion = "0.6" >       
+ <Dataset name = "hsapiens_gene_ensembl" interface = "default" >         
+  <Attribute name = "ensembl_gene_id" />          
+  <Attribute name = "external_gene_name" />    
+  <Attribute name = "start_position" />            
+  <Attribute name = "chromosome_name" />  
+ </Dataset>
+</Query>'
+```
+
+### Exon position database
+
+Use the script `biomart/export_mart_exons.sh` to download the exons file from Biomart.
+Then use `biomart/init_db.sh` to process the downloaded text file and create a SQLite3 DB.
+
+This DB uses the following schema:
+```sql
+CREATE TABLE exons (
+  ensembl_gene_id varchar(30),
+  exon_chrom_start int,
+  exon_chrom_end int,
+  ensembl_exon_id varchar(30),
+  rank int
+);
+
+CREATE INDEX exon_gene_id on exons (ensembl_gene_id);
+```
+
+We are happy to share the resulting DB on request.
