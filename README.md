@@ -1,18 +1,18 @@
 # SeqMeta Pipeline
 
 The pipeline consists mainly of R scripts with a few supporting Bash scripts.
-All R scripts are "executables" and can be used with "--help" to show command options.
+All R scripts are "executables" and can be used with `--help` to show command options.
 
 It depends on the following R packages:
-* seqMeta - for performing the actual group tests
-* rbgen - for reading `bgen` files
-* optparse - for parsing command line arguments
+* `seqMeta` - for performing the actual group tests
+* `rbgen` - for reading `bgen` files
+* `optparse` - for parsing command line arguments
 
 ## Analysis Workflow
 
 ![Workflow Figure](https://github.com/genepi-freiburg/seqmeta/blob/master/docs/workflow.PNG?raw=true)
 
-The buildJobs.R script can drive this process for multiple phenotypes and group files
+The `buildJobs.R` script can drive this process for multiple phenotypes and group files
 by producing a shell script that is ready to be used with job schedulers.
 
 ## Group Test Script
@@ -61,12 +61,12 @@ Options:
                 Show this help message and exit
 ```
 
-## Collect and Plot script
+## Collect and Plot results script
 
-This script combines the output of the chromosome-wise results of the groupTest.R script.
+The `collectAndPlotResults.R` script combines the output of the chromosome-wise results of the `groupTest.R` script.
 It collects all results per gene, calculates the "lambda" factor for each of the three tests, 
 produces a QQ plot PDF with one page per test and writes XLSX (Excel) and TSV (tab-separated values) top result files.
-These files contain all the results that satisfy a given condition (such as 'burden_p < 0.05').
+These files contain all the results that satisfy a given condition (such as `burden_p < 0.05`).
 
 Fields of the result file (can be used in the filtering condition):
 * gene - Ensembl Gene ID
@@ -109,9 +109,9 @@ Options:
                 Show this help message and exit
 ```
 
-## plotGene.R script
+## Plot Gene script
 
-This script produces a plot of a given gene that shows the single variants in the gene
+The `plotGene.R` script produces a plot of a given gene that shows the single variants in the gene
 by effect size and association p-value. It also plots the "exonic" regions.
 
 It can be used to plot multiple genes by
@@ -156,9 +156,11 @@ Options:
                 Show this help message and exit
 ```
 
-## buildJobs.R script
+## Build Jobs script
 
-This script can be used to build a job file for Slurm or other scheduling systems.
+The `buildJobs.R` script can be used to build a job file for Slurm or other scheduling systems.
+This is the best entry point to use the whole pipeline.
+
 It manages order and dependencies of the individual job steps and provides sensible parameters to the individual scripts.
 The script is controlled by a "parameters" file in key-value format.
 
@@ -201,11 +203,13 @@ Options:
 
 ## BioMart helper files
 
+Two helper files are required for annotation and plotting.
+
 ### Genes Mapping File
 
 Use the script `biomart/export_mart_genes.sh`.
 
-This accesses: http://www.ensembl.org/biomart/martservice
+This script uses the BioMart web service: http://www.ensembl.org/biomart/martservice
 
 This is the query:
 ```xml
@@ -222,6 +226,20 @@ This is the query:
 ### Exon position database
 
 Use the script `biomart/export_mart_exons.sh` to download the exons file from Biomart.
+
+Query:
+```xml
+<Query  virtualSchemaName = "default" formatter = "TSV" header = "1" uniqueRows = "1" count = "" datasetConfigVersion = "0.6" >
+ <Dataset name = "hsapiens_gene_ensembl" interface = "default" >
+  <Attribute name = "ensembl_gene_id" />
+  <Attribute name = "exon_chrom_start" />
+  <Attribute name = "exon_chrom_end" />
+  <Attribute name = "ensembl_exon_id" />
+  <Attribute name = "rank" />
+ </Dataset>
+</Query>
+```
+
 Then use `biomart/init_db.sh` to process the downloaded text file and create a SQLite3 DB.
 
 This DB uses the following schema:
