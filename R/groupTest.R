@@ -11,6 +11,7 @@ parse_options = function() {
     make_option("--group_file", help="Group file name"),
     make_option("--phenotype_file", help="Phenotype file name"),
     make_option("--phenotype_col", help="Column name of phenotype"),
+    make_option("--phenotype_type", help="Phenotype type ('binary'/'quantitative'), default: quantitative", default="quantitative"),
     make_option("--covariate_cols", help="Column names of covariates (separate by comma)"),
     make_option("--sv_output_path", help="Output file for single variant analysis (%CHR% and %PHENO% substituted)"),
     make_option("--group_output_path", help="Output file for group-based tests (%CHR% and %PHENO% substituted)"),
@@ -89,9 +90,15 @@ process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
   geno_pheno = prepare_genotype_phenotype_matrices(genotype, phenotype)
   snp_info = build_snpinfo(gene, snps)
   #residuals = calculate_null_model_residuals(geno_pheno$phenotype_matrix, parameters$model_formula)
+
+  family = "gaussian"
+  if (parameters$phenotype_type == "binary") {
+    family = "binomial"
+  }
   
   scores = prepScores2(Z = geno_pheno$genotype_matrix,
                        formula = parameters$model_formula,
+                       family = family,
                        SNPInfo = snp_info,
                        data = geno_pheno$phenotype_matrix)
   results = perform_tests(scores, snp_info, parameters$skat_o_method)
@@ -129,7 +136,7 @@ write_group_result = function(result, group_output_file, write_header) {
   write.table(line, group_output_file, append = T, row.names = F, col.names = write_header, sep = "\t", quote = F)
 }
 
-prepare_phenotype = function(phenotype_file, phenotype_col, individual_col, covariate_cols) {
+prepare_phenotype = function(phenotype_file, phenotype_col, individual_col, covariate_cols, phenotype_type) {
   print("======= PREPARING PHENOTYPES")
   
   phenotypes = read.table(phenotype_file, h=T, sep="\t")
@@ -154,6 +161,17 @@ prepare_phenotype = function(phenotype_file, phenotype_col, individual_col, cova
                            phenotype = phenotypes[, phenotype_col])
   colnames(phenotypes2)[2] = phenotype_col
   phenotypes2 = cbind(phenotypes2, phenotypes[, covariates_arr])
+
+  print(paste("Phenotype type: ", phenotype_type, sep=""))
+  if (phenotype_type == "binary") {
+    pheno_levels = levels(as.factor(phenotypes2[,phenotype_col]))
+    print(paste("Levels for binary phenotype: ", paste(pheno_levels, collapse=", ", sep=""), sep=""))
+    if (length(pheno_levels) != 2) {
+      stop("Require exactly two levels for binary phenotype.")
+    }
+    print(table(phenotypes2[,phenotype_col]))
+  }
+
   print(paste("Phenotype data frame: ", dim(phenotypes2)[1], "x", dim(phenotypes2)[2], sep=""))
   print(summary(phenotypes2))
   phenotypes2
@@ -197,7 +215,14 @@ check_and_prepare_parameters = function(parameters) {
   }
   
   parameters$sv_output_file = make_filename(parameters$sv_output_path, parameters$chr, parameters$phenotype_col)
+  #if (file.access(parameters$sv_output_file, mode=2) != 0) {
+  #  stop(paste("Single-variant output file not writeable (check path): ", parameters$sv_output_file, sep=""))
+  #}
+
   parameters$group_output_file = make_filename(parameters$group_output_path, parameters$chr, parameters$phenotype_col)
+  #if (file.access(parameters$group_output_file, mode=2) != 0) {
+  #  stop(paste("Group output file not writeable (check path): ", parameters$group_output_file, sep=""))
+  #}
   
   bgen_file = make_filename(parameters$bgen_path, parameters$chr, parameters$phenotype_col)
   if (!file.exists(bgen_file)) {
@@ -223,6 +248,10 @@ check_and_prepare_parameters = function(parameters) {
   }
   
   check_column(headers, parameters$phenotype_col)
+
+  if (parameters$phenotype_type != "quantitative" && parameters$phenotype_type != "binary") {
+    stop("Phenotype type must be 'binary' or 'quantitative'.")
+  }
   
   covariates_arr = trimws(unlist(strsplit(parameters$covariate_cols, ",", fixed=T)[[1]]))
   for (adj_col in covariates_arr) {
@@ -283,7 +312,7 @@ perform_analysis = function() {
   parameters = parse_options()
   parameters = check_and_prepare_parameters(parameters)
   clean_previous_output(parameters)
-  phenotype = prepare_phenotype(parameters$phenotype_file, parameters$phenotype_col, "individual_id", parameters$covariate_cols)
+  phenotype = prepare_phenotype(parameters$phenotype_file, parameters$phenotype_col, "individual_id", parameters$covariate_cols, parameters$phenotype_type)
   process_group_file(parameters, phenotype)
 }
 
