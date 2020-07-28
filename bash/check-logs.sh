@@ -29,8 +29,8 @@ do
 			fi
 
 			# group-ultraRare-egfr_ckdepi_creat_cys-chr2.txt  sv-syn-bun_serum-chr9.txt
-			GROUP_OUT_FILE="output/group-${MY_GROUP}_${PHENOTYPE}-chr${CHR}.txt"
-			SV_OUT_FILE="output/sv-${MY_GROUP}_${PHENOTYPE}-chr${CHR}.txt"
+			GROUP_OUT_FILE="output/group-${MY_GROUP}-${PHENOTYPE}-chr${CHR}.txt"
+			SV_OUT_FILE="output/sv-${MY_GROUP}-${PHENOTYPE}-chr${CHR}.txt"
 
 			if [ ! -f "$GROUP_OUT_FILE" ]
 			then
