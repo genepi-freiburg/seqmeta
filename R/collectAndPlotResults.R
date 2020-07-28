@@ -122,6 +122,8 @@ plot_and_annotate = function() {
 	data = read_data(group_output_files)
 	do_qq_plots(qq_plot_out_file, data)
 	do_top_results(top_out_file, options$top_tsv_output_file, options$filter_formula, mart_mapping_file, data)
+
+	print("Finished.")
 }
 
 plot_and_annotate()
