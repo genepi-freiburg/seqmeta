@@ -37,6 +37,15 @@ get_param = function(parameters, key, optional=F) {
 	parameters[line, "param_value"]
 }
 
+get_opt_param = function(parameters, key, def_val) {
+	line = which(parameters$param_key == key)
+	if (length(line) == 0) {
+		return(def_val)
+	} else {
+		return(parameters[line, "param_value"])
+	}
+}
+
 read_phenotype_file = function(parameters) {
 	fn = get_param(parameters, "PHENOTYPE_FILE")
 	print(paste("Reading phenotype file: ", fn, sep=""))
@@ -247,6 +256,7 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 	for (chr in 1:22) {
 		log_fn = paste(log_dir, "/", job_name, "-chr", chr, "-%j.log", sep="")
 		command = paste("sbatch \\\n",
+			get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""),
 			" --job-name=", job_name, " \\\n",
 			" --output=\"", log_fn, "\" \\\n",
 			" --error=\"", log_fn, "\" \\\n",
@@ -289,6 +299,7 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
 		phenotype, "-chr%CHR%.txt", sep="")
 
         command = paste("sbatch \\\n",
+		get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""),
                 " --dependency=singleton \\\n",
                 " --job-name=", job_name, " \\\n",
                 " --output=\"", log_fn, "\" \\\n",
@@ -324,6 +335,7 @@ build_plot_genes_job = function(parameters, group, phenotype, jobs_fn) {
 	plot_file_pattern = paste(output_dir, "/genePlot_", title, "_%SYMBOL%.pdf", sep="") 
 
         command = paste("sbatch \\\n",
+		get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""),
                 " --dependency=singleton \\\n",
                 " --job-name=", job_name, " \\\n",
                 " --output=\"", log_fn, "\" \\\n",

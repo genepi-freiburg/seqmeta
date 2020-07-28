@@ -60,4 +60,5 @@ OUTPUT_DIRECTORY="output"
 # log directory, may be relative or absolute path, must not end with /
 LOG_DIRECTORY="logs"
 
-
+# optional parameters to sbatch
+SBATCH_ADDITIONAL_PARAMS=""

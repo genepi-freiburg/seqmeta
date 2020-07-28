@@ -185,6 +185,7 @@ MART_MAPPING_FILE | MART mapping file (with Ensembl Gene IDs and Gene symbols) |
 EXON_DB_FILE | Exon SQLite database | ..../PIPELINE/biomart/ensembl_exons.sqlite
 OUTPUT_DIRECTORY | output directory, may be relative or absolute path, must not end with / | output
 LOG_DIRECTORY | log directory, may be relative or absolute path, must not end with / | logs
+SBATCH_ADDITIONAL_PARAMS | optional parameters to pass to 'sbatch' | --exclude=imbi6
 
 ```
 Usage: R/buildJobs.R [options]
