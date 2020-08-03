@@ -253,27 +253,31 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 		my_type = "binary"
 	}
 
+	cat(paste("function groupTest_", job_name, " {\n", sep=""), file = jobs_fn, append = T)
+
 	for (chr in 1:22) {
 		log_fn = paste(log_dir, "/", job_name, "-chr", chr, "-%j.log", sep="")
-		command = paste("sbatch \\\n",
-			get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""),
-			" --job-name=", job_name, " \\\n",
-			" --output=\"", log_fn, "\" \\\n",
-			" --error=\"", log_fn, "\" \\\n",
-			" ", script_path, " \\\n",
-			" --chr=", chr, " \\\n",
-			" --bgen_path=\"", bgen_path, "\" \\\n",
-			" --group_file=\"", group_fn, "\" \\\n",
-			" --phenotype_file=\"", pheno_path, "\" \\\n",
-			" --phenotype_col=", phenotype, " \\\n",
-			" --phenotype_type=", my_type, " \\\n",
-			" --covariate_cols=\"", covar_cols, "\" \\\n",
-			" --sv_output_path=\"", output_dir, "/sv-", group, "-%PHENO%-chr%CHR%.txt\" \\\n",
-			" --group_output_path=\"", output_dir, "/group-", group, "-%PHENO%-chr%CHR%.txt\"\n",
+		command = paste(" sbatch \\\n",
+			"  ", get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""), " \\\n",
+			"  --job-name=", job_name, " \\\n",
+			"  --output=\"", log_fn, "\" \\\n",
+			"  --error=\"", log_fn, "\" \\\n",
+			"  ", script_path, " \\\n",
+			"  --chr=", chr, " \\\n",
+			"  --bgen_path=\"", bgen_path, "\" \\\n",
+			"  --group_file=\"", group_fn, "\" \\\n",
+			"  --phenotype_file=\"", pheno_path, "\" \\\n",
+			"  --phenotype_col=", phenotype, " \\\n",
+			"  --phenotype_type=", my_type, " \\\n",
+			"  --covariate_cols=\"", covar_cols, "\" \\\n",
+			"  --sv_output_path=\"", output_dir, "/sv-", group, "-%PHENO%-chr%CHR%.txt\" \\\n",
+			"  --group_output_path=\"", output_dir, "/group-", group, "-%PHENO%-chr%CHR%.txt\"\n",
 			"\n\n",
 			sep="")
 		cat(command, file = jobs_fn, append = T)
 	}
+
+	cat("}\n\n", file = jobs_fn, append = T)
 }
 
 build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
@@ -298,23 +302,26 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
         group_result_fn = paste(output_dir, "/group-", group, "-", 
 		phenotype, "-chr%CHR%.txt", sep="")
 
-        command = paste("sbatch \\\n",
-		get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""),
-                " --dependency=singleton \\\n",
-                " --job-name=", job_name, " \\\n",
-                " --output=\"", log_fn, "\" \\\n",
-                " --error=\"", log_fn, "\" \\\n",
-                " ", script_path, " \\\n",
-                " --group_result_files=\"", group_result_fn, "\" \\\n",
-                " --mart_mapping_file=", mart_mapping_file, " \\\n",
-                " --qq_plot_output_file=\"", qq_fn, "\" \\\n",
-                " --top_tsv_output_file=\"", tsv_fn, "\" \\\n",
-                " --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
-                " --filter_formula=\"", filter_formula, "\"\n",
+	cat(paste("function collectAndPlot_", job_name, " {\n", sep=""), file = jobs_fn, append = T)
+
+        command = paste(" sbatch \\\n",
+		"  ", get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""), " \\\n",
+                "  --dependency=singleton \\\n",
+                "  --job-name=", job_name, " \\\n",
+                "  --output=\"", log_fn, "\" \\\n",
+                "  --error=\"", log_fn, "\" \\\n",
+                "  ", script_path, " \\\n",
+                "  --group_result_files=\"", group_result_fn, "\" \\\n",
+                "  --mart_mapping_file=", mart_mapping_file, " \\\n",
+                "  --qq_plot_output_file=\"", qq_fn, "\" \\\n",
+                "  --top_tsv_output_file=\"", tsv_fn, "\" \\\n",
+                "  --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
+                "  --filter_formula=\"", filter_formula, "\"\n",
                 "\n\n",
                 sep="")
 
         cat(command, file = jobs_fn, append = T)
+	cat("}\n\n", file = jobs_fn, append = T)
 }
 
 build_plot_genes_job = function(parameters, group, phenotype, jobs_fn) {
@@ -334,22 +341,25 @@ build_plot_genes_job = function(parameters, group, phenotype, jobs_fn) {
 	sv_file_fn = paste(output_dir, "/sv-", group, "-", phenotype, "-chr%CHR%.txt", sep="")
 	plot_file_pattern = paste(output_dir, "/genePlot_", title, "_%SYMBOL%.pdf", sep="") 
 
+	cat(paste("function plotGene_", job_name, " {\n", sep=""), file = jobs_fn, append = T)
+
         command = paste("sbatch \\\n",
-		get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""),
-                " --dependency=singleton \\\n",
-                " --job-name=", job_name, " \\\n",
-                " --output=\"", log_fn, "\" \\\n",
-                " --error=\"", log_fn, "\" \\\n",
-                " ", script_path, " \\\n",
-		" --title=\"", title, "\" \\\n",
-		" --top_file=\"", top_file_fn, "\" \\\n",
-		" --sv_path=\"", sv_file_fn, "\" \\\n",
-		" --mart_mapping_file=\"", mart_mapping_file, "\" \\\n",
-		" --exon_db=\"", exon_db_file, "\" \\\n",
-		" --pdf_output_path=\"", plot_file_pattern, "\" \\\n",
-		" --top_file_formula=\"", plot_formula, "\"\n\n\n", sep="")
+		"  ", get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""), " \\\n",
+                "  --dependency=singleton \\\n",
+                "  --job-name=", job_name, " \\\n",
+                "  --output=\"", log_fn, "\" \\\n",
+                "  --error=\"", log_fn, "\" \\\n",
+                "  ", script_path, " \\\n",
+		"  --title=\"", title, "\" \\\n",
+		"  --top_file=\"", top_file_fn, "\" \\\n",
+		"  --sv_path=\"", sv_file_fn, "\" \\\n",
+		"  --mart_mapping_file=\"", mart_mapping_file, "\" \\\n",
+		"  --exon_db=\"", exon_db_file, "\" \\\n",
+		"  --pdf_output_path=\"", plot_file_pattern, "\" \\\n",
+		"  --top_file_formula=\"", plot_formula, "\"\n\n\n", sep="")
 
 	cat(command, file = jobs_fn, append = T)
+	cat("}\n\n", file = jobs_fn, append = T)
 }
 
 build_jobs_for_phenotype = function(parameters, groups, phenotype, phenotype_type, jobs_fn) {
@@ -365,6 +375,20 @@ write_jobs_header = function(jobs_fn) {
 	cat("#!/bin/bash\n\n", file=jobs_fn)
 }
 
+invoke_job_functions = function(groups, phenotypes, jobs_fn) {
+	cat("\n\n#### Schedule jobs\n", file = jobs_fn, append = T)
+
+	for (group in groups) {
+		for (phenotype in phenotypes) {
+		        job_name = paste(group, phenotype, sep="_")
+			cat(paste("groupTest_", job_name, "\n", sep=""), file = jobs_fn, append = T)
+			cat(paste("collectAndPlot_", job_name, "\n", sep=""), file = jobs_fn, append = T)
+			cat(paste("plotGene_", job_name, "\n\n", sep=""), file = jobs_fn, append = T)
+		}
+		cat("\n", file = jobs_fn, append = T)
+	}
+}
+
 build_jobs = function(parameters, jobs_fn) {
 	write_jobs_header(jobs_fn)
 	phenotypes = parse_phenotypes(parameters)
@@ -375,6 +399,7 @@ build_jobs = function(parameters, jobs_fn) {
 		build_jobs_for_phenotype(parameters, groups, phenotype, phenotype_types[i], jobs_fn)
 		i = i + 1
 	}
+        invoke_job_functions(groups, phenotypes, jobs_fn)
 	print(paste("Built jobs file: ", jobs_fn, sep=""))
 }
 
