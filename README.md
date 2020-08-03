@@ -175,6 +175,7 @@ Options:
 
 The `buildJobs.R` script can be used to build a job file for Slurm or other scheduling systems.
 This is the best entry point to use the whole pipeline.
+The script or its output may need adjustments if you don't use Slurm but other schedulers.
 
 It manages order and dependencies of the individual job steps and provides sensible parameters to the individual scripts.
 The script is controlled by a "parameters" file in key-value format.
