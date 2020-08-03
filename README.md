@@ -220,6 +220,12 @@ Options:
                 Show this help message and exit
 ```
 
+The resulting jobs shell file is organized using Bash functions to group
+related jobs. 
+You can comment the invocations of these functions at the file end.
+This helps to re-run only certain parts of the pipeline, e.g.
+if only plotting parameters have been changed.
+
 ## BioMart helper files
 
 Two helper files are required for annotation and plotting.
