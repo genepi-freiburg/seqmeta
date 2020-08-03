@@ -343,6 +343,16 @@ build_plot_genes_job = function(parameters, group, phenotype, jobs_fn) {
 
 	cat(paste("function plotGene_", job_name, " {\n", sep=""), file = jobs_fn, append = T)
 
+        exon_db_param = paste("  --exon_db=\"", exon_db_file, "\" \\\n", sep="")
+
+        mysql_db = get_opt_param(parameters, "MYSQL_EXON_DB", "")
+        if (nchar(mysql_db) > 0) {
+		exon_db_param = paste("  --mysql_exon_db=", mysql_db, " \\\n",
+			"  --mysql_exon_user=", get_param(parameters, "MYSQL_EXON_USER"), " \\\n",
+			"  --mysql_exon_password=\"", get_param(parameters,"MYSQL_EXON_PASSWORD"), "\" \\\n",
+			"  --mysql_exon_host=", get_param(parameters, "MYSQL_EXON_HOST"), " \\\n", sep="")
+	}
+
         command = paste("sbatch \\\n",
 		"  ", get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""), " \\\n",
                 "  --dependency=singleton \\\n",
@@ -354,7 +364,7 @@ build_plot_genes_job = function(parameters, group, phenotype, jobs_fn) {
 		"  --top_file=\"", top_file_fn, "\" \\\n",
 		"  --sv_path=\"", sv_file_fn, "\" \\\n",
 		"  --mart_mapping_file=\"", mart_mapping_file, "\" \\\n",
-		"  --exon_db=\"", exon_db_file, "\" \\\n",
+		exon_db_param,
 		"  --pdf_output_path=\"", plot_file_pattern, "\" \\\n",
 		"  --top_file_formula=\"", plot_formula, "\"\n\n\n", sep="")
 

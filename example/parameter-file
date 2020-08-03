@@ -62,3 +62,15 @@ LOG_DIRECTORY="logs"
 
 # optional parameters to sbatch
 SBATCH_ADDITIONAL_PARAMS=""
+
+# MySQL exon database name
+MYSQL_EXON_DB=""
+
+# MySQL exon database, user name
+MYSQL_EXON_USER=""
+
+# MySQL exon database, password
+MYSQL_EXON_PASSWORD=""
+
+# MySQL exon database, host
+MYSQL_EXON_HOST=""

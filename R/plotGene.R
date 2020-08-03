@@ -13,7 +13,11 @@ parse_options = function() {
     make_option("--top_file_formula", help="Filtering formula for 'top results' file"),
     make_option("--sv_path", help="Path/filename of single variant association results (may use %CHR%)"),
     make_option("--mart_mapping_file", help="File with ENSG mappings", default="mart_export.txt"),
-    make_option("--exon_db", help="SQLite3 exon DB", default="ensembl_exons.sqlite"),
+    make_option("--exon_db", help="SQLite3 exon DB, file path; required if no MySQL db given", default=""),
+    make_option("--mysql_exon_db", help="MySQL exon DB, database name; required if no SQLite3 DB given", default=""),
+    make_option("--mysql_exon_user", help="MySQL exon DB, user name; required if no SQLite3 DB given", default=""),
+    make_option("--mysql_exon_password", help="MySQL exon DB, password; required if no SQLite3 DB given", default=""),
+    make_option("--mysql_exon_host", help="MySQL exon DB, server host; required if no SQLite3 DB given", default=""),
     make_option("--pdf_output_path", help="Path/filename of PDF output file. May use %SYMBOL%", default="plot_%SYMBOL%.pdf")
   )
   
@@ -37,12 +41,23 @@ prepare_mart_mapping = function(opts) {
 }
 
 find_exons_for_gene = function(opts, gene) {
-  print("====== Query SQLite3 for exons")
-  
-  exon_db = dbConnect(RSQLite::SQLite(), opts$exon_db, synchronous = NULL)
-  exons = dbGetQuery(exon_db, paste("SELECT DISTINCT exon_chrom_start, exon_chrom_end FROM exons WHERE ensembl_gene_id = \"", gene, "\"", sep=""))
+  print("====== Query for exons")
+
+  query = paste("SELECT DISTINCT exon_chrom_start, exon_chrom_end FROM exons WHERE ensembl_gene_id = \"", gene, "\"", sep="")
+
+  if (nchar(opts$mysql_exon_db) > 0) {
+    print("Use MySQL backend")
+    exon_db = dbConnect(RMySQL::MySQL(), dbname=opts$mysql_exon_db, 
+      username=opts$mysql_exon_user, password=opts$mysql_exon_password,
+      host=opts$mysql_exon_host)
+  } else {
+    print("Use SQLite3 backend")
+    exon_db = dbConnect(RSQLite::SQLite(), opts$exon_db, synchronous = NULL)
+  }
+
+  exons = dbGetQuery(exon_db, query)
   dbDisconnect(exon_db)
-  
+
   print(paste("Got ", nrow(exons), " exon positions from ",
     min(exons$exon_chrom_start), " to ", max(exons$exon_chrom_end),
     " for ", gene, ".", sep = ""))

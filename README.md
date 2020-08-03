@@ -7,6 +7,9 @@ It depends on the following R packages:
 * `seqMeta` - for performing the actual group tests
 * `rbgen` - for reading `bgen` files
 * `optparse` - for parsing command line arguments
+* `DBI` - for database access (package should come with standard R)
+* `RMySQL` - for accessing MySQL databases (must be installed only if you plan to use this DB)
+* `RSQLite` - for accessing SQLite3 databases (should be installed already; must be installed only if you plan to use this DB)
 
 ## Analysis Workflow
 
@@ -147,7 +150,19 @@ Options:
                 File with ENSG mappings
 
         --exon_db=EXON_DB
-                SQLite3 exon DB
+                SQLite3 exon DB, file path; required if no MySQL db given
+
+        --mysql_exon_db=MYSQL_EXON_DB
+                MySQL exon DB, database name; required if no SQLite3 DB given
+
+        --mysql_exon_user=MYSQL_EXON_USER
+                MySQL exon DB, user name; required if no SQLite3 DB given
+
+        --mysql_exon_password=MYSQL_EXON_PASSWORD
+                MySQL exon DB, password; required if no SQLite3 DB given
+
+        --mysql_exon_host=MYSQL_EXON_HOST
+                MySQL exon DB, server host; required if no SQLite3 DB given
 
         --pdf_output_path=PDF_OUTPUT_PATH
                 Path/filename of PDF output file. May use %SYMBOL%
@@ -186,7 +201,10 @@ EXON_DB_FILE | Exon SQLite database | ..../PIPELINE/biomart/ensembl_exons.sqlite
 OUTPUT_DIRECTORY | output directory, may be relative or absolute path, must not end with / | output
 LOG_DIRECTORY | log directory, may be relative or absolute path, must not end with / | logs
 SBATCH_ADDITIONAL_PARAMS | optional parameters to pass to 'sbatch' | --exclude=imbi6
-
+MYSQL_EXON_DB | MySQL exon DB, DB name | wuttke
+MYSQL_EXON_USER | MySQL exon DB, user name | wuttke
+MYSQL_EXON_PASSWORD | MySQL exon DB, password | .....
+MYSQL_EXON_HOST | MySQL exon DB, host name | biom131
 ```
 Usage: R/buildJobs.R [options]
 
@@ -257,3 +275,7 @@ CREATE INDEX exon_gene_id on exons (ensembl_gene_id);
 ```
 
 We are happy to share the resulting DB on request.
+
+As SQLite is known to have issues with DB files stored on NFS shares,
+you can also use a MySQL database.
+Helpful scripts are provided in the `biomart` folder.
