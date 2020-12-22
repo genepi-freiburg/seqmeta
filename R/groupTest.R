@@ -11,6 +11,7 @@ parse_options = function() {
     make_option("--group_file", help="Group file name"),
     make_option("--phenotype_file", help="Phenotype file name"),
     make_option("--phenotype_col", help="Column name of phenotype"),
+    make_option("--individual_col", help="Column name of individual ID, default: individual_id", default="individual_id"),
     make_option("--phenotype_type", help="Phenotype type ('binary'/'quantitative'), default: quantitative", default="quantitative"),
     make_option("--covariate_cols", help="Column names of covariates (separate by comma)"),
     make_option("--sv_output_path", help="Output file for single variant analysis (%CHR% and %PHENO% substituted)"),
@@ -38,9 +39,11 @@ load_genotype = function(chr, bgen_path, snps) {
     sd2 = t(sum_dosages)
     my_geno = cbind(data$samples, sd2)
     colnames(my_geno)[1] = "individual_id"
-  } else {
+  } else if (length(data$variants$rsid) == 1) {
     my_geno = data.frame(individual_id = data$samples, snp = sum_dosages)
     colnames(my_geno)[2] = snps[1]
+  } else {
+    my_geno = data.frame(individual_id = data$samples)
   }
   print(paste("Genotype data frame: ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
   my_geno
@@ -85,8 +88,19 @@ calculate_null_model_residuals = function(phenotype_matrix, model_formula) {
 
 process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
   print(paste("==== Process gene ", gene, " (", length(snps), " variants, chr", parameters$chr, ")", sep=""))
+
+  if (length(snps) == 0) {
+    print("No variants - return.")
+    return()
+  }
   
   genotype = load_genotype(parameters$chr, parameters$bgen_path, snps)
+
+  if (ncol(genotype) <= 1) {
+    print("No variants available - return.")
+    return()
+  }
+
   geno_pheno = prepare_genotype_phenotype_matrices(genotype, phenotype)
   snp_info = build_snpinfo(gene, snps)
   #residuals = calculate_null_model_residuals(geno_pheno$phenotype_matrix, parameters$model_formula)
@@ -157,6 +171,7 @@ prepare_phenotype = function(phenotype_file, phenotype_col, individual_col, cova
     }
   }
   
+  print(paste("Combine", individual_col, "and", phenotype_col))
   phenotypes2 = data.frame(individual_id = phenotypes[, individual_col], 
                            phenotype = phenotypes[, phenotype_col])
   colnames(phenotypes2)[2] = phenotype_col
@@ -312,7 +327,7 @@ perform_analysis = function() {
   parameters = parse_options()
   parameters = check_and_prepare_parameters(parameters)
   clean_previous_output(parameters)
-  phenotype = prepare_phenotype(parameters$phenotype_file, parameters$phenotype_col, "individual_id", parameters$covariate_cols, parameters$phenotype_type)
+  phenotype = prepare_phenotype(parameters$phenotype_file, parameters$phenotype_col, parameters$individual_col, parameters$covariate_cols, parameters$phenotype_type)
   process_group_file(parameters, phenotype)
 }
 

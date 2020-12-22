@@ -74,7 +74,7 @@ find_mapping_for_gene = function(mapping, gene_to_plot) {
   }
   mapping = mapping2
   if (nrow(mapping) != 1) {
-    stop(paste("Given gene not found/not unique. Got rows:", nrow(mapping)))
+    print(paste("Given gene not found/not unique. Got rows:", nrow(mapping)))
   }
   print(mapping)
   return(mapping)  
@@ -265,10 +265,12 @@ trim_exons_without_variants = function(variants, exons) {
 
 load_and_plot = function(opts, mapping, gene_to_plot) {
   mapping = find_mapping_for_gene(mapping, gene_to_plot)
-  e_nonmiss = load_sv_for_gene(opts, mapping)
-  exons = find_exons_for_gene(opts, mapping$gene[1])
-  exons = trim_exons_without_variants(e_nonmiss, exons)
-  do_plot(opts, e_nonmiss, exons)
+  if (nrow(mapping) > 0) {
+    e_nonmiss = load_sv_for_gene(opts, mapping)
+    exons = find_exons_for_gene(opts, mapping$gene[1])
+    exons = trim_exons_without_variants(e_nonmiss, exons)
+    do_plot(opts, e_nonmiss, exons)
+  }
 }
 
 find_genes_to_plot_from_top_file = function(opts) {

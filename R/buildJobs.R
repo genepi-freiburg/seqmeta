@@ -245,6 +245,7 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 	job_name = paste(group, phenotype, sep="_")
 
 	covar_cols = make_covar_cols(parameters, phenotype)
+        indiv_col = get_param(parameters, "INDIVIDUAL_ID_COLUMN")
 
 	group_fn = get_param(parameters, paste("GROUP_PATH_", group, sep=""))
 
@@ -270,6 +271,7 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 			"  --phenotype_col=", phenotype, " \\\n",
 			"  --phenotype_type=", my_type, " \\\n",
 			"  --covariate_cols=\"", covar_cols, "\" \\\n",
+			"  --individual_col=\"", indiv_col, "\" \\\n",
 			"  --sv_output_path=\"", output_dir, "/sv-", group, "-%PHENO%-chr%CHR%.txt\" \\\n",
 			"  --group_output_path=\"", output_dir, "/group-", group, "-%PHENO%-chr%CHR%.txt\"\n",
 			"\n\n",
