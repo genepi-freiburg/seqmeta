@@ -1,5 +1,7 @@
 #!/bin/bash
 
+IGNORE_ERRORS=1
+
 SAVE_GROUPS=$GROUPS
 unset GROUPS
 . parameter-file
@@ -18,13 +20,19 @@ do
 			if [ ! -f "$LOG_FILE_RESOLVED" ]
 			then
 				echo "ERROR: Log file not found: $LOG_FILE"
-				exit 1
+				if [ "$IGNORE_ERRORS" != "1" ]
+				then
+					exit 1
+				fi
 			else
 				OK=`grep Finished $LOG_FILE_RESOLVED`
 				if [ "$OK" == "" ]
 				then
 					echo "Log file looks incomplete: $LOG_FILE_RESOLVED"
-					exit 2
+                	                if [ "$IGNORE_ERRORS" != "1" ]
+		                        then
+						exit 2
+					fi
 				fi
 			fi
 
@@ -35,14 +43,40 @@ do
 			if [ ! -f "$GROUP_OUT_FILE" ]
 			then
 				echo "ERROR: Group output file not found: $GROUP_OUT_FILE"
-				exit 3
+                                if [ "$IGNORE_ERRORS" != "1" ]
+                                then
+					exit 3
+				fi
 			fi
 
 			if [ ! -f "$SV_OUT_FILE" ]
 			then
 				echo "ERROR: Single-variant output file not found: $SV_OUT_FILE"
-				exit 4
+                                if [ "$IGNORE_ERRORS" != "1" ]
+                                then
+					exit 4
+				fi
 			fi
+
+			HEADER=`head -n3 $GROUP_OUT_FILE | grep "gene" | wc -l`
+			if [ "$HEADER" != "1" ]
+			then
+				echo "ERROR: Header line seems missing: $GROUP_OUT_FILE"
+                                if [ "$IGNORE_ERRORS" != "1" ]
+                                then
+					exit 4
+				fi
+			fi
+
+                        HEADER=`head -n3 $SV_OUT_FILE | grep "gene" | wc -l`
+                        if [ "$HEADER" != "1" ]
+                        then
+                                echo "ERROR: Header line seems missing: $SV_OUT_FILE"
+                                if [ "$IGNORE_ERRORS" != "1" ]
+                                then
+	                                exit 4
+				fi
+                        fi
 
 			echo "OK."
 		done
@@ -58,21 +92,30 @@ do
 		if [ ! -f "$QQ_PLOT" ]
 		then
 			echo "ERROR: QQ plot missing for ${MY_GROUP} and ${PHENOTYPE}: ${QQ_PLOT}!"
-			exit 5
+                        if [ "$IGNORE_ERRORS" != "1" ]
+                        then
+				exit 5
+			fi
                 fi
 
                 TOP_FILE="output/$MY_GROUP-$PHENOTYPE-top.txt"
                 if [ ! -f "$TOP_FILE" ]
                 then
                         echo "ERROR: Top genes file missing for ${MY_GROUP} and ${PHENOTYPE}: ${TOP_FILE}!"
-			exit 6
+                        if [ "$IGNORE_ERRORS" != "1" ]
+                        then
+				exit 6
+			fi
                 fi
 
                 XLSX_FILE="output/$MY_GROUP-$PHENOTYPE-top.xlsx"
                 if [ ! -f "$XLSX_FILE" ]
                 then
                         echo "ERROR: XLSX file missing for ${MY_GROUP} and ${PHENOTYPE}: ${XLSX_FILE}!"
-			exit 7
+                        if [ "$IGNORE_ERRORS" != "1" ]
+                        then
+				exit 7
+			fi
                 fi
 	done
 
