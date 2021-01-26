@@ -91,14 +91,14 @@ process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
 
   if (length(snps) == 0) {
     print("No variants - return.")
-    return()
+    return(F)
   }
   
   genotype = load_genotype(parameters$chr, parameters$bgen_path, snps)
 
   if (ncol(genotype) <= 1) {
     print("No variants available - return.")
-    return()
+    return(F)
   }
 
   geno_pheno = prepare_genotype_phenotype_matrices(genotype, phenotype)
@@ -119,6 +119,8 @@ process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
   
   write_sv_result(results$single_variant, parameters$sv_output_file, write_header)
   write_group_result(results, parameters$group_output_file, write_header)
+
+  return(T)
 }
 
 write_sv_result = function(sv, sv_output_file, write_header) {
@@ -314,8 +316,10 @@ process_group_file = function(parameters, phenotype) {
     # TODO chromosome might not be coded in variant identifier
     line_chr = unlist(strsplit(snps[1], ":", fixed=T)[[1]])[1]
     if (parameters$chr == line_chr) {
-      process_gene(parameters, gene, snps, phenotype, write_header)
-      write_header = F
+      got_output = process_gene(parameters, gene, snps, phenotype, write_header)
+      if (got_output) {
+        write_header = F
+      }
     }
   }
   close(con)
