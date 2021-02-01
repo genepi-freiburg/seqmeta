@@ -249,6 +249,9 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 
 	group_fn = get_param(parameters, paste("GROUP_PATH_", group, sep=""))
 
+	max_maf = get_opt_param(parameters, "MAX_MAF", "1")
+        min_maf = get_opt_param(parameters, "MIN_MAF", "0")
+
 	my_type = "quantitative"
 	if (phenotype_type == "B") {
 		my_type = "binary"
@@ -267,6 +270,8 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 			"  --chr=", chr, " \\\n",
 			"  --bgen_path=\"", bgen_path, "\" \\\n",
 			"  --group_file=\"", group_fn, "\" \\\n",
+			"  --min_maf=\"", min_maf, "\" \\\n",
+			"  --max_maf=\"", max_maf, "\" \\\n",
 			"  --phenotype_file=\"", pheno_path, "\" \\\n",
 			"  --phenotype_col=", phenotype, " \\\n",
 			"  --phenotype_type=", my_type, " \\\n",

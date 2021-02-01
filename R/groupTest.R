@@ -57,7 +57,11 @@ load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
   print(paste("Genotype data frame: ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
 
   if (ncol(my_geno) > 1) {
-    mafs = rowMeans(sum_dosages, na.rm=T)/2
+    if (ncol(my_geno) > 2) {
+      mafs = rowMeans(sum_dosages, na.rm=T)/2
+    } else {
+      mafs = c(mean(sum_dosages)/2)
+    }
     fail = which(mafs < min_maf | mafs > max_maf)
     print(paste(length(fail), " SNPs fail MAF range filter (mean MAF=", mean(mafs, na.rm=T), ").", sep=""))
     if (length(fail) > 0) {
