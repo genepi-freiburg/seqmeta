@@ -24,7 +24,8 @@ parse_options = function() {
     make_option("--sv_output_path", help="Output file for single variant analysis (%CHR% and %PHENO% substituted)"),
     make_option("--group_output_path", help="Output file for group-based tests (%CHR% and %PHENO% substituted)"),
     make_option("--skat_o_method", help="Method for 'skatOMeta' function' ('integration'/'saddlepoint'). If lowest p-value in T1 or SKAT test < 1E-9, change this to 'saddlepoint'", default="integration"),
-    make_option("--max_maf", help="Upper MAF treshhold, e.g. 0.01. Default 0.", default="0")
+    make_option("--min_maf", help="Lower minor allele frequency (MAF) treshhold, e.g. 0.01. Default 0, range [0,1].", default="0"),
+    make_option("--max_maf", help="Upper minor allele frequency (MAF) treshhold, e.g. 0.01. Default 1, range [0,1].", default="1")
   )
   
   parse_args(OptionParser(option_list=option_list))
@@ -35,7 +36,7 @@ make_filename = function(path, chr, pheno) {
   gsub("%PHENO%", pheno, path)
 }
 
-load_genotype = function(chr, bgen_path, snps) {
+load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
   bgen_file = gsub("%CHR%", chr, bgen_path)
   print(paste("Loading BGEN file: ", bgen_file, sep=""))
   
@@ -54,6 +55,20 @@ load_genotype = function(chr, bgen_path, snps) {
     my_geno = data.frame(individual_id = data$samples)
   }
   print(paste("Genotype data frame: ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
+
+  if (ncol(my_geno) > 1) {
+    mafs = rowMeans(sum_dosages, na.rm=T)/2
+    fail = which(mafs < min_maf | mafs > max_maf)
+    print(paste(length(fail), " SNPs fail MAF range filter (mean MAF=", mean(mafs, na.rm=T), ").", sep=""))
+    if (length(fail) > 0) {
+      if (length(fail) + 1 == ncol(my_geno)) {
+        my_geno = data.frame(individual_id = data$samples)
+      } else {
+        my_geno = my_geno[,-(fail+1)] # col 1 is IID
+      }
+      print(paste("Genotype data frame after MAF filter: ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
+    }
+  }
   my_geno
 }
 
@@ -106,7 +121,8 @@ process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
     return(F)
   }
   
-  genotype = load_genotype(parameters$chr, parameters$bgen_path, snps)
+  genotype = load_genotype(parameters$chr, parameters$bgen_path, snps, as.numeric(parameters$min_maf),
+                           as.numeric(parameters$max_maf))
 
   if (ncol(genotype) <= 1) {
     print("No variants available - return.")
@@ -127,7 +143,8 @@ process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
                        family = family,
                        SNPInfo = snp_info,
                        data = geno_pheno$phenotype_matrix)
-  results = perform_tests(scores, snp_info, parameters$skat_o_method, parameters$max_maf)
+  results = perform_tests(scores, snp_info, parameters$skat_o_method,
+			  as.numeric(parameters$min_maf), as.numeric(parameters$max_maf))
   
   write_sv_result(results$single_variant, parameters$sv_output_file, write_header)
   write_group_result(results, parameters$group_output_file, write_header)
@@ -218,7 +235,7 @@ prepare_formula = function(phenotype_col, covariate_cols) {
   as.formula(formula_str)
 }
 
-perform_tests = function(scores, snp_info, skat_o_method, max_maf) {
+perform_tests = function(scores, snp_info, skat_o_method, min_maf, max_maf) {
   single_variant = singlesnpMeta(scores, SNPInfo = snp_info)
   
   print("SKAT test")
@@ -226,7 +243,7 @@ perform_tests = function(scores, snp_info, skat_o_method, max_maf) {
   print(format(head(skat), digits = 2))
   
   print("Burden test")
-  burden = burdenMeta(scores, SNPInfo = snp_info)
+  burden = burdenMeta(scores, SNPInfo = snp_info, mafRange = c(min_maf, max_maf))
   print(format(head(burden), digits=2))
   
   print("SKAT-O test")
@@ -293,6 +310,10 @@ check_and_prepare_parameters = function(parameters) {
   
   if (!(parameters$skat_o_method %in% c("integration", "saddlepoint"))) {
     stop(paste("Invalid skat_o_method (must be 'integration' or 'saddlepoint'):", parameters$skat_o_method))
+  }
+
+  if (parameters$min_maf < 0 || parameters$min_maf > 1) {
+    stop(paste("Invalid min_maf: must be in [0, 1]!"))
   }
 
   if (parameters$max_maf < 0 || parameters$max_maf > 1) {
