@@ -1,8 +1,15 @@
 #!/usr/local/R/R-3.6.3/bin/Rscript
+
+# can be set to F to remove dependency to pryr package
+SHOW_MEMORY_USAGE = T
+
 print("Loading packages")
 suppressPackageStartupMessages(library(rbgen))
 suppressPackageStartupMessages(library(seqMeta))
 suppressPackageStartupMessages(library(optparse))
+if (SHOW_MEMORY_USAGE) {
+  suppressPackageStartupMessages(library("pryr"))
+}
 
 parse_options = function() {
   option_list = list( 
@@ -16,7 +23,8 @@ parse_options = function() {
     make_option("--covariate_cols", help="Column names of covariates (separate by comma)"),
     make_option("--sv_output_path", help="Output file for single variant analysis (%CHR% and %PHENO% substituted)"),
     make_option("--group_output_path", help="Output file for group-based tests (%CHR% and %PHENO% substituted)"),
-    make_option("--skat_o_method", help="Method for 'skatOMeta' function' ('integration'/'saddlepoint'). If lowest p-value in T1 or SKAT test < 1E-9, change this to 'saddlepoint'", default="integration")
+    make_option("--skat_o_method", help="Method for 'skatOMeta' function' ('integration'/'saddlepoint'). If lowest p-value in T1 or SKAT test < 1E-9, change this to 'saddlepoint'", default="integration"),
+    make_option("--max_maf", help="Upper MAF treshhold, e.g. 0.01. Default 0.", default="0")
   )
   
   parse_args(OptionParser(option_list=option_list))
@@ -88,6 +96,10 @@ calculate_null_model_residuals = function(phenotype_matrix, model_formula) {
 
 process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
   print(paste("==== Process gene ", gene, " (", length(snps), " variants, chr", parameters$chr, ")", sep=""))
+  gc()
+  if (SHOW_MEMORY_USAGE) {
+    print(paste("Memory:", mem_used()))
+  }
 
   if (length(snps) == 0) {
     print("No variants - return.")
@@ -115,10 +127,14 @@ process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
                        family = family,
                        SNPInfo = snp_info,
                        data = geno_pheno$phenotype_matrix)
-  results = perform_tests(scores, snp_info, parameters$skat_o_method)
+  results = perform_tests(scores, snp_info, parameters$skat_o_method, parameters$max_maf)
   
   write_sv_result(results$single_variant, parameters$sv_output_file, write_header)
   write_group_result(results, parameters$group_output_file, write_header)
+
+  if (SHOW_MEMORY_USAGE) {
+    print(paste("Memory after calculating gene:", mem_used()))
+  }
 
   return(T)
 }
@@ -202,7 +218,7 @@ prepare_formula = function(phenotype_col, covariate_cols) {
   as.formula(formula_str)
 }
 
-perform_tests = function(scores, snp_info, skat_o_method) {
+perform_tests = function(scores, snp_info, skat_o_method, max_maf) {
   single_variant = singlesnpMeta(scores, SNPInfo = snp_info)
   
   print("SKAT test")
@@ -277,6 +293,10 @@ check_and_prepare_parameters = function(parameters) {
   
   if (!(parameters$skat_o_method %in% c("integration", "saddlepoint"))) {
     stop(paste("Invalid skat_o_method (must be 'integration' or 'saddlepoint'):", parameters$skat_o_method))
+  }
+
+  if (parameters$max_maf < 0 || parameters$max_maf > 1) {
+    stop(paste("Invalid max_maf: must be in [0, 1]!"))
   }
 
   parameters$model_formula = prepare_formula(parameters$phenotype_col, parameters$covariate_cols)
