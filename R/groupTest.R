@@ -63,7 +63,7 @@ load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
       mafs = c(mean(sum_dosages)/2)
     }
     fail = which(mafs < min_maf | mafs > max_maf)
-    print(paste(length(fail), " SNPs fail MAF range filter (mean MAF=", mean(mafs, na.rm=T), ").", sep=""))
+    print(paste(length(fail), " SNPs fail MAF range filter", sep=""))
     if (length(fail) > 0) {
       if (length(fail) + 1 == ncol(my_geno)) {
         my_geno = data.frame(individual_id = data$samples)
@@ -128,8 +128,8 @@ process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
   genotype = load_genotype(parameters$chr, parameters$bgen_path, snps, as.numeric(parameters$min_maf),
                            as.numeric(parameters$max_maf))
 
-  if (ncol(genotype) <= 1) {
-    print("No variants available - return.")
+  if (ncol(genotype) <= 2) {
+    print(paste("Need more than one variant, but got:", ncol(genotype)-1))
     return(F)
   }
 
