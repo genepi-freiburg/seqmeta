@@ -257,30 +257,37 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 		my_type = "binary"
 	}
 
-	cat(paste("function groupTest_", job_name, " {\n", sep=""), file = jobs_fn, append = T)
-
 	for (chr in 1:22) {
 		log_fn = paste(log_dir, "/", job_name, "-chr", chr, "-%j.log", sep="")
-		command = paste(" sbatch \\\n",
-			"  ", get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""), " \\\n",
-			"  --job-name=", job_name, " \\\n",
-			"  --output=\"", log_fn, "\" \\\n",
-			"  --error=\"", log_fn, "\" \\\n",
-			"  ", script_path, " \\\n",
-			"  --chr=", chr, " \\\n",
-			"  --bgen_path=\"", bgen_path, "\" \\\n",
-			"  --group_file=\"", group_fn, "\" \\\n",
-			"  --min_maf=\"", min_maf, "\" \\\n",
-			"  --max_maf=\"", max_maf, "\" \\\n",
-			"  --phenotype_file=\"", pheno_path, "\" \\\n",
-			"  --phenotype_col=", phenotype, " \\\n",
-			"  --phenotype_type=", my_type, " \\\n",
-			"  --covariate_cols=\"", covar_cols, "\" \\\n",
-			"  --individual_col=\"", indiv_col, "\" \\\n",
-			"  --sv_output_path=\"", output_dir, "/sv-", group, "-%PHENO%-chr%CHR%.txt\" \\\n",
-			"  --group_output_path=\"", output_dir, "/group-", group, "-%PHENO%-chr%CHR%.txt\"\n",
-			"\n\n",
+
+		command = paste(
+			"function groupTest_", job_name, "_chr", chr, " {\n",
+			"  sbatch \\\n",
+			"    ", get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""), " \\\n",
+			"    --job-name=", job_name, " \\\n",
+			"    --output=\"", log_fn, "\" \\\n",
+			"    --error=\"", log_fn, "\" \\\n",
+			"    ", script_path, " \\\n",
+			"    --chr=", chr, " \\\n",
+			"    --bgen_path=\"", bgen_path, "\" \\\n",
+			"    --group_file=\"", group_fn, "\" \\\n",
+			"    --min_maf=\"", min_maf, "\" \\\n",
+			"    --max_maf=\"", max_maf, "\" \\\n",
+			"    --phenotype_file=\"", pheno_path, "\" \\\n",
+			"    --phenotype_col=", phenotype, " \\\n",
+			"    --phenotype_type=", my_type, " \\\n",
+			"    --covariate_cols=\"", covar_cols, "\" \\\n",
+			"    --individual_col=\"", indiv_col, "\" \\\n",
+			"    --sv_output_path=\"", output_dir, "/sv-", group, "-%PHENO%-chr%CHR%.txt\" \\\n",
+			"    --group_output_path=\"", output_dir, "/group-", group, "-%PHENO%-chr%CHR%.txt\"\n",
+			"}\n\n",
 			sep="")
+		cat(command, file = jobs_fn, append = T)
+	}
+
+	cat(paste("function groupTest_", job_name, " {\n", sep=""), file = jobs_fn, append = T)
+	for (chr in 1:22) {
+		command = paste("  groupTest_", job_name, "_chr", chr, "\n", sep="")
 		cat(command, file = jobs_fn, append = T)
 	}
 
@@ -311,19 +318,19 @@ build_collect_and_plot_job = function(parameters, group, phenotype, jobs_fn) {
 
 	cat(paste("function collectAndPlot_", job_name, " {\n", sep=""), file = jobs_fn, append = T)
 
-        command = paste(" sbatch \\\n",
-		"  ", get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""), " \\\n",
-                "  --dependency=singleton \\\n",
-                "  --job-name=", job_name, " \\\n",
-                "  --output=\"", log_fn, "\" \\\n",
-                "  --error=\"", log_fn, "\" \\\n",
-                "  ", script_path, " \\\n",
-                "  --group_result_files=\"", group_result_fn, "\" \\\n",
-                "  --mart_mapping_file=", mart_mapping_file, " \\\n",
-                "  --qq_plot_output_file=\"", qq_fn, "\" \\\n",
-                "  --top_tsv_output_file=\"", tsv_fn, "\" \\\n",
-                "  --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
-                "  --filter_formula=\"", filter_formula, "\"\n",
+        command = paste("  sbatch \\\n",
+		"    ", get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""), " \\\n",
+                "    --dependency=singleton \\\n",
+                "    --job-name=", job_name, " \\\n",
+                "    --output=\"", log_fn, "\" \\\n",
+                "    --error=\"", log_fn, "\" \\\n",
+                "    ", script_path, " \\\n",
+                "    --group_result_files=\"", group_result_fn, "\" \\\n",
+                "    --mart_mapping_file=", mart_mapping_file, " \\\n",
+                "    --qq_plot_output_file=\"", qq_fn, "\" \\\n",
+                "    --top_tsv_output_file=\"", tsv_fn, "\" \\\n",
+                "    --top_xlsx_output_file=\"", xlsx_fn, "\" \\\n",
+                "    --filter_formula=\"", filter_formula, "\"\n",
                 "\n\n",
                 sep="")
 
