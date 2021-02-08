@@ -13,13 +13,16 @@ do
 	do
 		for CHR in `seq 1 22`
 		do
-			echo -n "Check: $PHENOTYPE, $MY_GROUP, chr$CHR: "
+			JOB_NAME="groupTest_${MY_GROUP}_${PHENOTYPE}_chr${CHR}"
+
+			>&2 echo -n "Check: $PHENOTYPE, $MY_GROUP, chr$CHR: "
 
 			LOG_FILE="logs/${MY_GROUP}_${PHENOTYPE}-chr${CHR}-*.log"
-			LOG_FILE_RESOLVED=`ls $LOG_FILE`
+			LOG_FILE_RESOLVED=`ls $LOG_FILE | sort | tail -n1`
 			if [ ! -f "$LOG_FILE_RESOLVED" ]
 			then
-				echo "ERROR: Log file not found: $LOG_FILE"
+				>&2 echo "ERROR: Log file not found: $LOG_FILE"
+				echo $JOB_NAME
 				if [ "$IGNORE_ERRORS" != "1" ]
 				then
 					exit 1
@@ -28,7 +31,8 @@ do
 				OK=`grep Finished $LOG_FILE_RESOLVED`
 				if [ "$OK" == "" ]
 				then
-					echo "Log file looks incomplete: $LOG_FILE_RESOLVED"
+					>&2 echo "Log file looks incomplete: $LOG_FILE_RESOLVED"
+					echo $JOB_NAME
                 	                if [ "$IGNORE_ERRORS" != "1" ]
 		                        then
 						exit 2
@@ -42,7 +46,7 @@ do
 
 			if [ ! -f "$GROUP_OUT_FILE" ]
 			then
-				echo "ERROR: Group output file not found: $GROUP_OUT_FILE"
+				>&2 echo "ERROR: Group output file not found: $GROUP_OUT_FILE"
                                 if [ "$IGNORE_ERRORS" != "1" ]
                                 then
 					exit 3
@@ -51,7 +55,7 @@ do
 
 			if [ ! -f "$SV_OUT_FILE" ]
 			then
-				echo "ERROR: Single-variant output file not found: $SV_OUT_FILE"
+				>&2 echo "ERROR: Single-variant output file not found: $SV_OUT_FILE"
                                 if [ "$IGNORE_ERRORS" != "1" ]
                                 then
 					exit 4
@@ -61,7 +65,7 @@ do
 			HEADER=`head -n3 $GROUP_OUT_FILE | grep "gene" | wc -l`
 			if [ "$HEADER" != "1" ]
 			then
-				echo "ERROR: Header line seems missing: $GROUP_OUT_FILE"
+				>&2 echo "ERROR: Header line seems missing: $GROUP_OUT_FILE"
                                 if [ "$IGNORE_ERRORS" != "1" ]
                                 then
 					exit 4
@@ -71,27 +75,27 @@ do
                         HEADER=`head -n3 $SV_OUT_FILE | grep "gene" | wc -l`
                         if [ "$HEADER" != "1" ]
                         then
-                                echo "ERROR: Header line seems missing: $SV_OUT_FILE"
+                                >&2 echo "ERROR: Header line seems missing: $SV_OUT_FILE"
                                 if [ "$IGNORE_ERRORS" != "1" ]
                                 then
 	                                exit 4
 				fi
                         fi
 
-			echo "OK."
+			>&2 echo "OK."
 		done
 
 		GENE_PLOT_FILE_PATTERN="output/genePlot_${MY_GROUP}-${PHENOTYPE}_*.pdf"
 		GENE_PLOT_FILES=`ls $GENE_PLOT_FILE_PATTERN`
 		if [ "$GENE_PLOT_FILES" == "" ]
 		then
-			echo "WARNING: No gene plots found for ${MY_GROUP} and ${PHENOTYPE}!"
+			>&2 echo "WARNING: No gene plots found for ${MY_GROUP} and ${PHENOTYPE}!"
 		fi
 
 		QQ_PLOT="output/$MY_GROUP-$PHENOTYPE-qq.pdf"
 		if [ ! -f "$QQ_PLOT" ]
 		then
-			echo "ERROR: QQ plot missing for ${MY_GROUP} and ${PHENOTYPE}: ${QQ_PLOT}!"
+			>&2 echo "ERROR: QQ plot missing for ${MY_GROUP} and ${PHENOTYPE}: ${QQ_PLOT}!"
                         if [ "$IGNORE_ERRORS" != "1" ]
                         then
 				exit 5
@@ -101,7 +105,7 @@ do
                 TOP_FILE="output/$MY_GROUP-$PHENOTYPE-top.txt"
                 if [ ! -f "$TOP_FILE" ]
                 then
-                        echo "ERROR: Top genes file missing for ${MY_GROUP} and ${PHENOTYPE}: ${TOP_FILE}!"
+                        >&2 echo "ERROR: Top genes file missing for ${MY_GROUP} and ${PHENOTYPE}: ${TOP_FILE}!"
                         if [ "$IGNORE_ERRORS" != "1" ]
                         then
 				exit 6
@@ -111,7 +115,7 @@ do
                 XLSX_FILE="output/$MY_GROUP-$PHENOTYPE-top.xlsx"
                 if [ ! -f "$XLSX_FILE" ]
                 then
-                        echo "ERROR: XLSX file missing for ${MY_GROUP} and ${PHENOTYPE}: ${XLSX_FILE}!"
+                        >&2 echo "ERROR: XLSX file missing for ${MY_GROUP} and ${PHENOTYPE}: ${XLSX_FILE}!"
                         if [ "$IGNORE_ERRORS" != "1" ]
                         then
 				exit 7

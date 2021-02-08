@@ -262,6 +262,9 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 
 		command = paste(
 			"function groupTest_", job_name, "_chr", chr, " {\n",
+			"  rm -f \"", log_dir, "/", job_name, "-chr", chr, "-*.log\" \"", 
+				output_dir, "/sv-", group, "-", phenotype, "-chr", chr, ".txt\" \"",
+				output_dir, "/group-", group, "-", phenotype, "-chr", chr, ".txt\"\n",
 			"  sbatch \\\n",
 			"    ", get_opt_param(parameters, "SBATCH_ADDITIONAL_PARAMS", ""), " \\\n",
 			"    --job-name=", job_name, " \\\n",
