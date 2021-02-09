@@ -79,6 +79,12 @@ load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
 prepare_genotype_phenotype_matrices = function(genotype, phenotype) {
   data = merge(phenotype, genotype, by="individual_id")
   print(paste("Merged genotype and phenotype data: ", dim(data)[1], "x", dim(data)[2], sep=""))
+  if (dim(data)[1] == 0) {
+    print("Merge problems - individual ID mismatch?")
+    print(head(phenotype))
+    print(head(genotype))
+    stop()
+  }
   
   if (ncol(phenotype) + 1 < ncol(data)) {
     geno_matrix = data[, (ncol(phenotype)+1):ncol(data)]
