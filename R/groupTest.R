@@ -25,7 +25,8 @@ parse_options = function() {
     make_option("--group_output_path", help="Output file for group-based tests (%CHR% and %PHENO% substituted)"),
     make_option("--skat_o_method", help="Method for 'skatOMeta' function' ('integration'/'saddlepoint'). If lowest p-value in T1 or SKAT test < 1E-9, change this to 'saddlepoint'", default="integration"),
     make_option("--min_maf", help="Lower minor allele frequency (MAF) treshhold, e.g. 0.01. Default 0, range [0,1].", default="0"),
-    make_option("--max_maf", help="Upper minor allele frequency (MAF) treshhold, e.g. 0.01. Default 1, range [0,1].", default="1")
+    make_option("--max_maf", help="Upper minor allele frequency (MAF) treshhold, e.g. 0.01. Default 1, range [0,1].", default="1"),
+    make_option("--kinship_rdata", help="Rdata file with 'kinship' object (sparse kinship matrix); default '' = don't use matrix", default="")
   )
   
   parse_args(OptionParser(option_list=option_list))
@@ -119,7 +120,7 @@ calculate_null_model_residuals = function(phenotype_matrix, model_formula) {
   residuals
 }
 
-process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
+process_gene = function(parameters, gene, snps, phenotype, kinship, write_header = F) {
   print(paste("==== Process gene ", gene, " (", length(snps), " variants, chr", parameters$chr, ")", sep=""))
   gc()
   if (SHOW_MEMORY_USAGE) {
@@ -148,11 +149,20 @@ process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
     family = "binomial"
   }
   
-  scores = prepScores2(Z = geno_pheno$genotype_matrix,
-                       formula = parameters$model_formula,
-                       family = family,
-                       SNPInfo = snp_info,
-                       data = geno_pheno$phenotype_matrix)
+  if (nrow(kinship) > 0) {
+    scores = prepScores2(Z = geno_pheno$genotype_matrix,
+                         formula = parameters$model_formula,
+                         family = family,
+                         kins = kinship,
+                         SNPInfo = snp_info,
+                         data = geno_pheno$phenotype_matrix)
+  } else {
+    scores = prepScores2(Z = geno_pheno$genotype_matrix,
+                         formula = parameters$model_formula,
+                         family = family,
+                         SNPInfo = snp_info,
+                         data = geno_pheno$phenotype_matrix)
+  }
   results = perform_tests(scores, snp_info, parameters$skat_o_method,
 			  as.numeric(parameters$min_maf), as.numeric(parameters$max_maf))
   
@@ -349,7 +359,7 @@ clean_previous_output = function(parameters) {
   }
 }
 
-process_group_file = function(parameters, phenotype) {
+process_group_file = function(parameters, phenotype, kinship) {
   print("======= PROCESS GROUP FILE")
   
   con = file(parameters$group_file, "r")
@@ -367,7 +377,7 @@ process_group_file = function(parameters, phenotype) {
     # TODO chromosome might not be coded in variant identifier
     line_chr = unlist(strsplit(snps[1], ":", fixed=T)[[1]])[1]
     if (parameters$chr == line_chr) {
-      got_output = process_gene(parameters, gene, snps, phenotype, write_header)
+      got_output = process_gene(parameters, gene, snps, phenotype, kinship, write_header)
       if (got_output) {
         write_header = F
       }
@@ -378,12 +388,24 @@ process_group_file = function(parameters, phenotype) {
   print("Finished")
 }
 
+prepare_kinship_file = function(kinship_rdata_path) {
+  if (nchar(kinship_rdata_path) > 0) {
+    load(kinship_rdata_path)
+    print(paste("Got kinship matrix with", nrow(kinship), "dimensions."))
+    return(kinship)
+  } else {
+    print("Not using a kinship matrix.")
+    return(data.frame())
+  }
+}
+
 perform_analysis = function() {
   parameters = parse_options()
   parameters = check_and_prepare_parameters(parameters)
   clean_previous_output(parameters)
   phenotype = prepare_phenotype(parameters$phenotype_file, parameters$phenotype_col, parameters$individual_col, parameters$covariate_cols, parameters$phenotype_type)
-  process_group_file(parameters, phenotype)
+  kinship = prepare_kinship_file(parameters$kinship_rdata)
+  process_group_file(parameters, phenotype, kinship)
 }
 
 perform_analysis()
