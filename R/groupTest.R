@@ -17,6 +17,7 @@ parse_options = function() {
     make_option("--bgen_path", help="BGEN/BGI file name, %CHR% will be substituted by 'chr'"),
     make_option("--group_file", help="Group file name"),
     make_option("--phenotype_file", help="Phenotype file name"),
+    make_option("--exclude_individuals", help="File name with individuals to exclude, one in a row. Default empty = no exclusions", default=""),
     make_option("--phenotype_col", help="Column name of phenotype"),
     make_option("--individual_col", help="Column name of individual ID, default: individual_id", default="individual_id"),
     make_option("--phenotype_type", help="Phenotype type ('binary'/'quantitative'), default: quantitative", default="quantitative"),
@@ -157,7 +158,7 @@ process_gene = function(parameters, gene, snps, phenotype, write_header = F) {
 			  as.numeric(parameters$min_maf), as.numeric(parameters$max_maf))
   
   write_sv_result(results$single_variant, parameters$sv_output_file, write_header)
-  write_group_result(results, parameters$group_output_file, write_header)
+  write_group_result(results, nrow(geno_pheno$phenotype_matrix), parameters$group_output_file, write_header)
 
   if (SHOW_MEMORY_USAGE) {
     print(paste("Memory after calculating gene:", mem_used()))
@@ -170,8 +171,9 @@ write_sv_result = function(sv, sv_output_file, write_header) {
   write.table(sv, sv_output_file, append = T, row.names = F, col.names = write_header, sep = "\t", quote = F)
 }
 
-write_group_result = function(result, group_output_file, write_header) {
+write_group_result = function(result, indiv_count, group_output_file, write_header) {
   line = data.frame(gene = result$skat$gene,
+                    sample_size = indiv_count,
                     skat_p = result$skat$p,
                     skat_Qmeta = result$skat$Qmeta,
                     skat_cmaf = result$skat$cmaf,
@@ -195,7 +197,7 @@ write_group_result = function(result, group_output_file, write_header) {
   write.table(line, group_output_file, append = T, row.names = F, col.names = write_header, sep = "\t", quote = F)
 }
 
-prepare_phenotype = function(phenotype_file, phenotype_col, individual_col, covariate_cols, phenotype_type) {
+prepare_phenotype = function(phenotype_file, phenotype_col, individual_col, covariate_cols, phenotype_type, exclude_file) {
   print("======= PREPARING PHENOTYPES")
   
   phenotypes = read.table(phenotype_file, h=T, sep="\t")
@@ -213,6 +215,24 @@ prepare_phenotype = function(phenotype_file, phenotype_col, individual_col, cova
       phenotypes = phenotypes[-covar_na,]
     } else {
       print(paste("No missing values for: ", covar, sep=""))
+    }
+  }
+
+  if (nchar(exclude_file) > 0) {
+    print(paste("Read individual exclusions: ", exclude_file, sep=""))
+    exclude = read.table(exclude_file, h=F)
+    print(paste("Got file with ", nrow(exclude), " rows and ", ncol(exclude), " columns.", sep=""))
+    if (ncol(exclude) != 1) {
+      stop("Require single column with individual ID in exclusion file.")
+    }
+    print(head(exclude[,1]))
+    print(head(phenotypes[,individual_col]))
+    excl_idx = which(phenotypes[, individual_col] %in% exclude[,1])
+    if (length(excl_idx) > 0) {
+      print(paste("Excluding ", length(excl_idx), " additional rows because of presence in exclusion file.", sep=""))
+      phenotypes = phenotypes[-excl_idx,]
+    } else {
+      print("No additional exclusions based on exclusion file.")
     }
   }
   
@@ -382,7 +402,7 @@ perform_analysis = function() {
   parameters = parse_options()
   parameters = check_and_prepare_parameters(parameters)
   clean_previous_output(parameters)
-  phenotype = prepare_phenotype(parameters$phenotype_file, parameters$phenotype_col, parameters$individual_col, parameters$covariate_cols, parameters$phenotype_type)
+  phenotype = prepare_phenotype(parameters$phenotype_file, parameters$phenotype_col, parameters$individual_col, parameters$covariate_cols, parameters$phenotype_type, parameters$exclude_individuals)
   process_group_file(parameters, phenotype)
 }
 
