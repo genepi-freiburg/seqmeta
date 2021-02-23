@@ -49,8 +49,12 @@ load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
   my_geno = data.frame()
   
   for (chunk_index in 1:chunk_count) {
-    data = bgen.load(bgen_file, rsids = snps)
-    print(paste("Chunk ", chunk_index, ": Got data for ", length(data$samples), " samples and ", length(data$variants$rsid), " variants", sep=""))
+    startOffset = BGEN_CHUNK_SIZE * (chunk_index - 1) + 1
+    stopOffset = min(startOffset + BGEN_CHUNK_SIZE - 1, length(snps))
+    
+    print(paste("Chunk ", chunk_index, ": SNPs ", startOffset, " to ", stopOffset, sep=""))
+    data = bgen.load(bgen_file, rsids = snps[startOffset:stopOffset])
+    print(paste("Got data for ", length(data$samples), " samples and ", length(data$variants$rsid), " variants", sep=""))
     
     sum_dosages = 0 * data$data[,,3] + data$data[,,2] + 2 * data$data[,,1]
     if (length(data$variants$rsid) > 1) {
