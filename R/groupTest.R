@@ -122,6 +122,8 @@ prepare_genotype_phenotype_matrices = function(genotype, phenotype) {
     colnames(geno_matrix)[1] = colnames(data)[ncol(phenotype)+1]
   }
   
+  rownames(geno_matrix) = data$individual_id
+  
   for (i in 1:ncol(geno_matrix)) {
     geno_matrix[, i] = as.numeric(as.character(geno_matrix[, i]))
   }
@@ -148,13 +150,21 @@ calculate_null_model_residuals = function(phenotype_matrix, model_formula) {
   residuals
 }
 
-build_kinship_matrix = function(kinship_list, genotype_matrix) {
-  dimid = colnames(genotype_matrix)
-  id1 = match(kinship_list$ID1, dimid)
-  id2 = match(kinship_list$ID2, dimid)
-  m = sparseMatrix(i=id1, j=id2, x=x, #symmetric=TRUE, 
-               dims = c(length(dimid), length(dimid)),
-               dimnames=list(as.character(dimid), as.character(dimid)))
+build_kinship_matrix = function(kinship_list, genotype_ids) {
+  print(paste("Got ", length(genotype_ids), " individuals for kinship matrix.", sep=""))
+  sub_kinship = kinship_list[kinship_list$ID1 %in% genotype_ids & kinship_list$ID2 %in% genotype_ids,]
+  print(paste("Got ", nrow(sub_kinship), " Kinship coefficients for individual pairs.", sep=""))
+  if (nrow(sub_kinship) == 0) {
+    print(head(genotype_ids))
+    print(head(kinship_list))
+  }
+  id1 = match(sub_kinship$ID1, genotype_ids)
+  id2 = match(sub_kinship$ID2, genotype_ids)
+  m = sparseMatrix(i=id1, j=id2, x=sub_kinship$Kinship,
+               dims = c(length(genotype_ids), length(genotype_ids)),
+               dimnames=list(as.character(genotype_ids), as.character(genotype_ids)))
+  print(paste("Dimension of resulting sparse Kinship matrix:"))
+  print(dim(m))
   return(m)
 }
 
@@ -188,7 +198,7 @@ process_gene = function(parameters, gene, snps, phenotype, kinship, write_header
   }
   
   if (nrow(kinship) > 0) {
-    kinship_matrix = build_kinship_matrix(kinship, geno_pheno$genotype_matrix)
+    kinship_matrix = build_kinship_matrix(kinship, rownames(geno_pheno$genotype_matrix))
     scores = prepScores2(Z = geno_pheno$genotype_matrix,
                          formula = parameters$model_formula,
                          family = family,
