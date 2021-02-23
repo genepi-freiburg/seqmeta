@@ -461,6 +461,9 @@ prepare_kinship_file = function(kinship_path) {
     kinship = read.table(kinship_path, h=T)
     print(paste("Got kinship table with", nrow(kinship), "rows."))
     print(head(kinship))
+    if (!all(c("ID1", "ID2", "Kinship") %in% colnames(kinship))) {
+      stop("Kinship tables needs to have columns: ID1, ID2, Kinshop")
+    }
     return(kinship)
   } else {
     print("Not using a kinship matrix.")

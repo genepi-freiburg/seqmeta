@@ -207,9 +207,13 @@ check_paths = function(parameters) {
 	check_path(parameters, "PLOT_SCRIPT_PATH")
 	check_path(parameters, "MART_MAPPING_FILE")
 	check_path(parameters, "EXON_DB_FILE")
-        if (get_opt_param(parameters, "KINSHIP_RDATA", "") != "") {
-	        check_path(parameters, "KINSHIP_RDATA")
+        if (get_opt_param(parameters, "KINSHIP", "") != "") {
+	        check_path(parameters, "KINSHIP")
         }
+        if (get_opt_param(parameters, "EXCLUDE_INDIVIDUALS", "") != "") {
+                check_path(parameters, "EXCLUDE_INDIVIDUALS")
+        }
+
 }
 
 check_parameters = function(parameters) {
@@ -255,12 +259,19 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 	max_maf = get_opt_param(parameters, "MAX_MAF", "1")
         min_maf = get_opt_param(parameters, "MIN_MAF", "0")
 
-        kinship = get_opt_param(parameters, "KINSHIP_RDATA", "")
+        kinship = get_opt_param(parameters, "KINSHIP", "")
         if (kinship != "") {
-		kinship_argument = paste("    --kinship_rdata=", kinship, " \\\n", sep="")
+		kinship_argument = paste("    --kinship=", kinship, " \\\n", sep="")
         } else {
 		kinship_argument = ""
 	}
+
+        exclude_individuals = get_opt_param(parameters, "EXCLUDE_INDIVIDUALS", "")
+        if (exclude_individuals != "") {
+                exclude_individuals_argument = paste("    --exclude_individuals=", exclude_individuals, " \\\n", sep="")
+        } else {
+                exclude_individuals_argument = ""
+        }
 
 	my_type = "quantitative"
 	if (phenotype_type == "B") {
@@ -286,7 +297,7 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 			"    --group_file=\"", group_fn, "\" \\\n",
 			"    --min_maf=\"", min_maf, "\" \\\n",
 			"    --max_maf=\"", max_maf, "\" \\\n", 
-                        kinship_argument,
+                        kinship_argument, exclude_individuals_argument,
 			"    --phenotype_file=\"", pheno_path, "\" \\\n",
 			"    --phenotype_col=", phenotype, " \\\n",
 			"    --phenotype_type=", my_type, " \\\n",
