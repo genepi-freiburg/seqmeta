@@ -10,6 +10,7 @@ suppressPackageStartupMessages(library(optparse))
 if (SHOW_MEMORY_USAGE) {
   suppressPackageStartupMessages(library("pryr"))
 }
+suppressPackageStartupMessages(library(Matrix))
 
 parse_options = function() {
   option_list = list( 
@@ -26,7 +27,7 @@ parse_options = function() {
     make_option("--skat_o_method", help="Method for 'skatOMeta' function' ('integration'/'saddlepoint'). If lowest p-value in T1 or SKAT test < 1E-9, change this to 'saddlepoint'", default="integration"),
     make_option("--min_maf", help="Lower minor allele frequency (MAF) treshhold, e.g. 0.01. Default 0, range [0,1].", default="0"),
     make_option("--max_maf", help="Upper minor allele frequency (MAF) treshhold, e.g. 0.01. Default 1, range [0,1].", default="1"),
-    make_option("--kinship_rdata", help="Rdata file with 'kinship' object (sparse kinship matrix); default '' = don't use matrix", default="")
+    make_option("--kinship", help="Kinship table path (requires columns 'ID1', 'ID2' and 'Kinship'); default '' = don't use matrix", default="")
   )
   
   parse_args(OptionParser(option_list=option_list))
@@ -120,6 +121,16 @@ calculate_null_model_residuals = function(phenotype_matrix, model_formula) {
   residuals
 }
 
+build_kinship_matrix = function(kinship_list, genotype_matrix) {
+  dimid = colnames(genotype_matrix)
+  id1 = match(kinship_list$ID1, dimid)
+  id2 = match(kinship_list$ID2, dimid)
+  m = sparseMatrix(i=id1, j=id2, x=x, #symmetric=TRUE, 
+               dims = c(length(dimid), length(dimid)),
+               dimnames=list(as.character(dimid), as.character(dimid)))
+  return(m)
+}
+
 process_gene = function(parameters, gene, snps, phenotype, kinship, write_header = F) {
   print(paste("==== Process gene ", gene, " (", length(snps), " variants, chr", parameters$chr, ")", sep=""))
   gc()
@@ -150,10 +161,11 @@ process_gene = function(parameters, gene, snps, phenotype, kinship, write_header
   }
   
   if (nrow(kinship) > 0) {
+    kinship_matrix = build_kinship_matrix(kinship, geno_pheno$genotype_matrix)
     scores = prepScores2(Z = geno_pheno$genotype_matrix,
                          formula = parameters$model_formula,
                          family = family,
-                         kins = kinship,
+                         kins = kinship_matrix,
                          SNPInfo = snp_info,
                          data = geno_pheno$phenotype_matrix)
   } else {
@@ -388,10 +400,11 @@ process_group_file = function(parameters, phenotype, kinship) {
   print("Finished")
 }
 
-prepare_kinship_file = function(kinship_rdata_path) {
-  if (nchar(kinship_rdata_path) > 0) {
-    load(kinship_rdata_path)
-    print(paste("Got kinship matrix with", nrow(kinship), "dimensions."))
+prepare_kinship_file = function(kinship_path) {
+  if (nchar(kinship_path) > 0) {
+    kinship = read.table(kinship_path, h=T)
+    print(paste("Got kinship table with", nrow(kinship), "rows."))
+    print(head(kinship))
     return(kinship)
   } else {
     print("Not using a kinship matrix.")
@@ -404,7 +417,7 @@ perform_analysis = function() {
   parameters = check_and_prepare_parameters(parameters)
   clean_previous_output(parameters)
   phenotype = prepare_phenotype(parameters$phenotype_file, parameters$phenotype_col, parameters$individual_col, parameters$covariate_cols, parameters$phenotype_type)
-  kinship = prepare_kinship_file(parameters$kinship_rdata)
+  kinship = prepare_kinship_file(parameters$kinship)
   process_group_file(parameters, phenotype, kinship)
 }
 
