@@ -3,6 +3,9 @@
 # can be set to F to remove dependency to pryr package
 SHOW_MEMORY_USAGE = T
 
+# read in BGEN files in chunks of x SNPs (rbgen error)
+BGEN_CHUNK_SIZE = 1000
+
 print("Loading packages")
 suppressPackageStartupMessages(library(rbgen))
 suppressPackageStartupMessages(library(seqMeta))
@@ -40,21 +43,40 @@ load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
   bgen_file = gsub("%CHR%", chr, bgen_path)
   print(paste("Loading BGEN file: ", bgen_file, sep=""))
   
-  data = bgen.load(bgen_file, rsids = snps)
-  print(paste("Got data for ", length(data$samples), " samples and ", length(data$variants$rsid), " variants", sep=""))
+  chunk_count = ceiling(length(snps) / BGEN_CHUNK_SIZE)
+  print(paste("Load ", length(snps), " SNPs in ", chunk_count, " chunks.", sep=""))
+
+  my_geno = data.frame()
   
-  sum_dosages = 0 * data$data[,,3] + data$data[,,2] + 2 * data$data[,,1]
-  if (length(data$variants$rsid) > 1) {
-    sd2 = t(sum_dosages)
-    my_geno = cbind(data$samples, sd2)
-    colnames(my_geno)[1] = "individual_id"
-  } else if (length(data$variants$rsid) == 1) {
-    my_geno = data.frame(individual_id = data$samples, snp = sum_dosages)
-    colnames(my_geno)[2] = snps[1]
-  } else {
-    my_geno = data.frame(individual_id = data$samples)
+  for (chunk_index in 1:chunk_count) {
+    data = bgen.load(bgen_file, rsids = snps)
+    print(paste("Chunk ", chunk_index, ": Got data for ", length(data$samples), " samples and ", length(data$variants$rsid), " variants", sep=""))
+    
+    sum_dosages = 0 * data$data[,,3] + data$data[,,2] + 2 * data$data[,,1]
+    if (length(data$variants$rsid) > 1) {
+      sd2 = t(sum_dosages)
+      chunk_geno = cbind(data$samples, sd2)
+      colnames(chunk_geno)[1] = "individual_id"
+    } else if (length(data$variants$rsid) == 1) {
+      chunk_geno = data.frame(individual_id = data$samples, snp = sum_dosages)
+      colnames(chunk_geno)[2] = snps[1]
+    } else {
+      chunk_geno = data.frame(individual_id = data$samples)
+    }
+    
+    if (nrow(my_geno) == 0) {
+      my_geno = chunk_geno
+    } else {
+      if (nrow(chunk_geno) != length(data$samples)) {
+        stop("Missing samples in chunk.")
+      }
+      if (ncol(chunk_geno) > 1) {
+        my_geno = cbind(my_geno, chunk_geno[, 2:ncol(chunk_geno)])
+      }
+    }
   }
-  print(paste("Genotype data frame: ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
+  
+  print(paste("Genotype data frame (all chunks): ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
 
   if (ncol(my_geno) > 1) {
     if (ncol(my_geno) > 2) {
