@@ -66,9 +66,26 @@ load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
       colnames(chunk_geno)[1] = "individual_id"
     } else if (length(data$variants$rsid) == 1) {
       chunk_geno = data.frame(individual_id = data$samples, snp = sum_dosages)
-      colnames(chunk_geno)[2] = snps[1]
+      colnames(chunk_geno)[2] = snps[startOffset]
     } else {
       chunk_geno = data.frame(individual_id = data$samples)
+    }
+
+    if (ncol(chunk_geno) > 2) {
+      mafs = rowMeans(sum_dosages, na.rm=T)/2
+    } else {
+      mafs = c(mean(sum_dosages)/2)
+    }
+
+    fail = which(mafs < min_maf | mafs > max_maf)
+    print(paste(length(fail), " SNPs fail MAF range filter", sep=""))
+    if (length(fail) > 0) {
+      if (length(fail) + 1 == ncol(chunk_geno)) {
+        chunk_geno = data.frame(individual_id = data$samples)
+      } else {
+        chunk_geno = chunk_geno[,-(fail+1)] # col 1 is IID
+      }
+      print(paste("Chunk genotype data frame after MAF filter: ", dim(chunk_geno)[1], "x", dim(chunk_geno)[2], sep=""))
     }
     
     if (nrow(my_geno) == 0) {
@@ -77,31 +94,43 @@ load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
       if (nrow(chunk_geno) != length(data$samples)) {
         stop("Missing samples in chunk.")
       }
-      if (ncol(chunk_geno) > 1) {
+      if (ncol(chunk_geno) > 2) {
         my_geno = cbind(my_geno, chunk_geno[, 2:ncol(chunk_geno)])
+      } else if (ncol(chunk_geno) == 2) {
+	chunk_geno_frame = data.frame(V1 = chunk_geno[,2])
+        colnames(chunk_geno_frame) = snps[startOffset]
+        print(paste("assigned singular SNP name:", snps[startOffset]))
+        my_geno = cbind(my_geno, chunk_geno_frame)
       }
     }
   }
   
   print(paste("Genotype data frame (all chunks): ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
 
-  if (ncol(my_geno) > 1) {
-    if (ncol(my_geno) > 2) {
-      mafs = rowMeans(sum_dosages, na.rm=T)/2
-    } else {
-      mafs = c(mean(sum_dosages)/2)
-    }
-    fail = which(mafs < min_maf | mafs > max_maf)
-    print(paste(length(fail), " SNPs fail MAF range filter", sep=""))
-    if (length(fail) > 0) {
-      if (length(fail) + 1 == ncol(my_geno)) {
-        my_geno = data.frame(individual_id = data$samples)
-      } else {
-        my_geno = my_geno[,-(fail+1)] # col 1 is IID
-      }
-      print(paste("Genotype data frame after MAF filter: ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
-    }
-  }
+#  if (ncol(my_geno) > 1) {
+#    print("Convert to numeric")
+#    print(summary(my_geno[,2]))
+#    print(summary(as.character(my_geno[,2])))
+#    print(summary(as.numeric(as.character(my_geno[,2]))))
+#    print(summary(my_geno[,2]))
+#    my_geno[,2:ncol(my_geno)] = as.numeric(as.character(my_geno[,2:ncol(my_geno)]))
+#    if (ncol(my_geno) > 2) {
+#      print(summary(my_geno[,2:ncol(my_geno)]))
+#      mafs = colMeans(my_geno[, 2:ncol(my_geno)], na.rm=T)/2
+#    } else {
+#      mafs = c(mean(my_geno[,2])/2)
+#    }
+#    fail = which(mafs < min_maf | mafs > max_maf)
+#    print(paste(length(fail), " SNPs fail MAF range filter", sep=""))
+#    if (length(fail) > 0) {
+#      if (length(fail) + 1 == ncol(my_geno)) {
+#        my_geno = data.frame(individual_id = data$samples)
+#      } else {
+#        my_geno = my_geno[,-(fail+1)] # col 1 is IID
+#      }
+#      print(paste("Genotype data frame after MAF filter: ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
+#    }
+#  }
   my_geno
 }
 
