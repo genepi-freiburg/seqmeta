@@ -19,6 +19,7 @@ parse_options = function() {
   option_list = list( 
     make_option("--chr", help="Chromosome number (for patterns)"),
     make_option("--bgen_path", help="BGEN/BGI file name, %CHR% will be substituted by 'chr'"),
+    make_option("--sample_path", help="Sample file name, %CHR% will be substituted by 'chr'", default=""),
     make_option("--group_file", help="Group file name"),
     make_option("--phenotype_file", help="Phenotype file name"),
     make_option("--exclude_individuals", help="File name with individuals to exclude, one in a row. Default empty = no exclusions", default=""),
@@ -31,7 +32,8 @@ parse_options = function() {
     make_option("--skat_o_method", help="Method for 'skatOMeta' function' ('integration'/'saddlepoint'). If lowest p-value in T1 or SKAT test < 1E-9, change this to 'saddlepoint'", default="integration"),
     make_option("--min_maf", help="Lower minor allele frequency (MAF) treshhold, e.g. 0.01. Default 0, range [0,1].", default="0"),
     make_option("--max_maf", help="Upper minor allele frequency (MAF) treshhold, e.g. 0.01. Default 1, range [0,1].", default="1"),
-    make_option("--kinship", help="Kinship table path (requires columns 'ID1', 'ID2' and 'Kinship'); default '' = don't use matrix", default="")
+    make_option("--kinship", help="Kinship table path (requires columns 'ID1', 'ID2' and 'Kinship'); default '' = don't use matrix", default=""),
+    make_option("--stepwise_grouptest", help="Step-wise group test ('add-one-in'); give gene name to calculate", default="")
   )
   
   parse_args(OptionParser(option_list=option_list))
@@ -42,7 +44,7 @@ make_filename = function(path, chr, pheno) {
   gsub("%PHENO%", pheno, path)
 }
 
-load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
+load_genotype = function(chr, bgen_path, snps, min_maf, max_maf, sample) {
   bgen_file = gsub("%CHR%", chr, bgen_path)
   print(paste("Loading BGEN file: ", bgen_file, sep=""))
   
@@ -107,30 +109,13 @@ load_genotype = function(chr, bgen_path, snps, min_maf, max_maf) {
   
   print(paste("Genotype data frame (all chunks): ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
 
-#  if (ncol(my_geno) > 1) {
-#    print("Convert to numeric")
-#    print(summary(my_geno[,2]))
-#    print(summary(as.character(my_geno[,2])))
-#    print(summary(as.numeric(as.character(my_geno[,2]))))
-#    print(summary(my_geno[,2]))
-#    my_geno[,2:ncol(my_geno)] = as.numeric(as.character(my_geno[,2:ncol(my_geno)]))
-#    if (ncol(my_geno) > 2) {
-#      print(summary(my_geno[,2:ncol(my_geno)]))
-#      mafs = colMeans(my_geno[, 2:ncol(my_geno)], na.rm=T)/2
-#    } else {
-#      mafs = c(mean(my_geno[,2])/2)
-#    }
-#    fail = which(mafs < min_maf | mafs > max_maf)
-#    print(paste(length(fail), " SNPs fail MAF range filter", sep=""))
-#    if (length(fail) > 0) {
-#      if (length(fail) + 1 == ncol(my_geno)) {
-#        my_geno = data.frame(individual_id = data$samples)
-#      } else {
-#        my_geno = my_geno[,-(fail+1)] # col 1 is IID
-#      }
-#      print(paste("Genotype data frame after MAF filter: ", dim(my_geno)[1], "x", dim(my_geno)[2], sep=""))
-#    }
-#  }
+  if (nrow(sample) > 0) {
+    print(paste("Apply sample file with", nrow(sample), "rows"))
+    if (nrow(sample) != nrow(my_geno)) {
+      stop("Sample file size / genotype file size mismatch")
+    }
+    my_geno[,1] = sample$ID2
+  }
   my_geno
 }
 
@@ -197,7 +182,19 @@ build_kinship_matrix = function(kinship_list, genotype_ids) {
   return(m)
 }
 
-process_gene = function(parameters, gene, snps, phenotype, kinship, write_header = F) {
+step_wise_group_test = function(parameters, result, geno_pheno, family, snp_info) {
+}
+
+
+process_gene = function(parameters, gene, snps, phenotype, kinship, sample, write_header = F) {
+  step_wise = parameters$stepwise_grouptest
+  if (nchar(step_wise) > 0) {
+    if (gene != step_wise) {
+      print(paste("Step-wise group test mode, skip gene: ", gene, sep=""))
+      return(F)
+    }
+  }
+
   print(paste("==== Process gene ", gene, " (", length(snps), " variants, chr", parameters$chr, ")", sep=""))
   gc()
   if (SHOW_MEMORY_USAGE) {
@@ -210,7 +207,7 @@ process_gene = function(parameters, gene, snps, phenotype, kinship, write_header
   }
   
   genotype = load_genotype(parameters$chr, parameters$bgen_path, snps, as.numeric(parameters$min_maf),
-                           as.numeric(parameters$max_maf))
+                           as.numeric(parameters$max_maf), sample)
 
   if (ncol(genotype) <= 2) {
     print(paste("Need more than one variant, but got:", ncol(genotype)-1))
@@ -246,6 +243,11 @@ process_gene = function(parameters, gene, snps, phenotype, kinship, write_header
   
   write_sv_result(results$single_variant, parameters$sv_output_file, write_header)
   write_group_result(results, nrow(geno_pheno$phenotype_matrix), parameters$group_output_file, write_header)
+
+  if (nchar(step_wise) > 0) {
+    print("Perform step-wise group test")
+    step_wise_group_test(parameters, result, geno_pheno, family, snp_info)
+  }
 
   if (SHOW_MEMORY_USAGE) {
     print(paste("Memory after calculating gene:", mem_used()))
@@ -372,6 +374,7 @@ perform_tests = function(scores, snp_info, skat_o_method, min_maf, max_maf) {
 
 check_column = function(headers, col_name) {
   if (!(col_name %in% colnames(headers))) {
+    print(paste("Available columns: ", colnames(headers), collapse=",", sep=""))
     stop(paste("Phenotype file does not contain column:", col_name))
   }
 }
@@ -456,7 +459,7 @@ clean_previous_output = function(parameters) {
   }
 }
 
-process_group_file = function(parameters, phenotype, kinship) {
+process_group_file = function(parameters, phenotype, kinship, sample) {
   print("======= PROCESS GROUP FILE")
   
   con = file(parameters$group_file, "r")
@@ -474,7 +477,7 @@ process_group_file = function(parameters, phenotype, kinship) {
     # TODO chromosome might not be coded in variant identifier
     line_chr = unlist(strsplit(snps[1], ":", fixed=T)[[1]])[1]
     if (parameters$chr == line_chr) {
-      got_output = process_gene(parameters, gene, snps, phenotype, kinship, write_header)
+      got_output = process_gene(parameters, gene, snps, phenotype, kinship, sample, write_header)
       if (got_output) {
         write_header = F
       }
@@ -500,13 +503,28 @@ prepare_kinship_file = function(kinship_path) {
   }
 }
 
+load_sample_file = function(sample_file_name, chr) {
+  print("======= LOADING SAMPLE FILE")
+  if (nchar(sample_file_name) > 0) {
+    sample = read.table(gsub("%CHR%", chr, sample_file_name), skip=2)
+    print(paste("Loaded sample file with", nrow(sample), "sample IDs."))
+    colnames(sample)[1:2] = c("ID1", "ID2")
+    print(head(sample))
+    return(sample)
+  } else {
+    print("Not using a sample file.")
+    return(data.frame())
+  }
+}
+
 perform_analysis = function() {
   parameters = parse_options()
   parameters = check_and_prepare_parameters(parameters)
   clean_previous_output(parameters)
   phenotype = prepare_phenotype(parameters$phenotype_file, parameters$phenotype_col, parameters$individual_col, parameters$covariate_cols, parameters$phenotype_type, parameters$exclude_individuals)
+  sample = load_sample_file(parameters$sample_path, parameters$chr)
   kinship = prepare_kinship_file(parameters$kinship)
-  process_group_file(parameters, phenotype, kinship)
+  process_group_file(parameters, phenotype, kinship, sample)
 }
 
 perform_analysis()

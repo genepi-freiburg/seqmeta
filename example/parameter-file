@@ -31,6 +31,8 @@ GROUP_PATH_syn=/data/studies/06_UKBB/Exome_50k/06_seqMeta/GROUP/02_synonymous/gr
 ## GENOTYPES
 BGEN_PATH=/data/studies/06_UKBB/Exome_50k/03_Merge_GWAS_WES/wes/wes_imp_bgen/ukb_wes_efe-chr%CHR%.bgen
 
+#SAMPLE_PATH=
+
 ## Global options
 
 # criteria for selecting top results (xlsx)

@@ -242,6 +242,7 @@ make_covar_cols = function(parameters, phenotype) {
 build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, jobs_fn) {
 	script_path = get_param(parameters, "GROUP_TEST_SCRIPT_PATH")
 	bgen_path = get_param(parameters, "BGEN_PATH")
+	sample_path = get_opt_param(parameters, "SAMPLE_PATH", "")
 	pheno_path = get_param(parameters, "PHENOTYPE_FILE")
 	output_dir = get_param(parameters, "OUTPUT_DIRECTORY")
 	log_dir = get_param(parameters, "LOG_DIRECTORY")
@@ -278,6 +279,11 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 		my_type = "binary"
 	}
 
+	sample_path_argument = ""
+	if (nchar(sample_path) > 0) {
+		sample_path_argument = paste("    --sample_path=\"", sample_path, "\" \\\n", sep="")
+	}
+
 	for (chr in 1:22) {
 		log_fn = paste(log_dir, "/", job_name, "-chr", chr, "-%j.log", sep="")
 
@@ -294,6 +300,7 @@ build_group_test_jobs = function(parameters, group, phenotype, phenotype_type, j
 			"    ", script_path, " \\\n",
 			"    --chr=", chr, " \\\n",
 			"    --bgen_path=\"", bgen_path, "\" \\\n",
+			sample_path_argument,
 			"    --group_file=\"", group_fn, "\" \\\n",
 			"    --min_maf=\"", min_maf, "\" \\\n",
 			"    --max_maf=\"", max_maf, "\" \\\n", 
