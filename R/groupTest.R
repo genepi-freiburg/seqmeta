@@ -33,7 +33,8 @@ parse_options = function() {
     make_option("--min_maf", help="Lower minor allele frequency (MAF) treshhold, e.g. 0.01. Default 0, range [0,1].", default="0"),
     make_option("--max_maf", help="Upper minor allele frequency (MAF) treshhold, e.g. 0.01. Default 1, range [0,1].", default="1"),
     make_option("--kinship", help="Kinship table path (requires columns 'ID1', 'ID2' and 'Kinship'); default '' = don't use matrix", default=""),
-    make_option("--stepwise_grouptest", help="Step-wise group test ('add-one-in'); give gene name to calculate", default="")
+    make_option("--stepwise_grouptest", help="Step-wise group test ('add-one-in'); give gene name to calculate", default=""),
+    make_option("--step_p_limit", help="P value threshold for single variants to be included in step-wise group test; default: 0.1", default="0.1")
   )
   
   parse_args(OptionParser(option_list=option_list))
@@ -182,7 +183,64 @@ build_kinship_matrix = function(kinship_list, genotype_ids) {
   return(m)
 }
 
-step_wise_group_test = function(parameters, result, geno_pheno, family, snp_info) {
+step_wise_group_test = function(parameters, results, geno_pheno, family, snp_info) {
+  sv = results$single_variant
+  sv = sv[order(sv$p),]
+  print(sv)
+
+  steps = data.frame()
+  for (nVar in 1:nrow(sv)) {
+    if (sv[nVar, "p"] > as.numeric(parameters$step_p_limit)) {
+      print(paste("Break - p >", parameters$step_p_limit))
+      break
+    }
+
+    steps[nVar, "nVar"] = nVar
+
+    vars = sv[1:nVar, "Name"]
+    print(paste("Use variants for step ", nVar, ": ", paste(vars, collapse=", "), sep=""))
+    lastVar = sv[nVar,]
+
+    my_idx = which(colnames(geno_pheno$genotype_matrix) %in% vars)
+    print(paste("Indices:", paste(my_idx, collapse=", ")))
+
+    my_snpinfo = snp_info[snp_info$Name %in% vars,]
+    print(my_snpinfo)
+
+    if (length(my_idx) == 1) {
+      my_geno = matrix(geno_pheno$genotype_matrix[, my_idx])
+    } else {
+      my_geno = geno_pheno$genotype_matrix[, my_idx]
+    }
+    print(dim(my_geno))
+    rownames(my_geno) = rownames(geno_pheno$phenotype_matrix)
+    colnames(my_geno) = my_snpinfo$Name
+
+    print(colnames(my_geno))
+
+    scores = prepScores2(Z = my_geno,
+                         formula = parameters$model_formula,
+                         family = family,
+                         SNPInfo = snp_info,
+                         data = geno_pheno$phenotype_matrix)
+    step_results = perform_tests(scores, snp_info, parameters$skat_o_method,
+                                 as.numeric(parameters$min_maf), as.numeric(parameters$max_maf))
+    steps[nVar, "p_burden"] = step_results$burden$p 
+    steps[nVar, "beta_burden"] = step_results$burden$beta
+    steps[nVar, "se_burden"] = step_results$burden$se
+    steps[nVar, "p_skat"] = step_results$skat$p
+    steps[nVar, "p_skat_o"] = step_results$skat_o$p
+    steps[nVar, "p_sv"] = step_results$skat_o$p
+    steps[nVar, "beta_sv"] = lastVar$beta
+    steps[nVar, "se_sv"] = lastVar$se
+    steps[nVar, "maf_sv"] = lastVar$maf
+    print(steps)
+  }
+
+  steps_fn = gsub("group-", paste("steps-", parameters$stepwise_grouptest, sep=""), parameters$group_output_file)
+  print(paste("Writing to:", steps_fn))
+
+  write.table(steps, steps_fn, row.names=F, col.names=T, sep="\t", quote=F)
 }
 
 
@@ -246,7 +304,7 @@ process_gene = function(parameters, gene, snps, phenotype, kinship, sample, writ
 
   if (nchar(step_wise) > 0) {
     print("Perform step-wise group test")
-    step_wise_group_test(parameters, result, geno_pheno, family, snp_info)
+    step_wise_group_test(parameters, results, geno_pheno, family, snp_info)
   }
 
   if (SHOW_MEMORY_USAGE) {
