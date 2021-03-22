@@ -352,7 +352,10 @@ prepare_phenotype = function(phenotype_file, phenotype_col, individual_col, cova
   
   pheno_na = which(is.na(phenotypes[, phenotype_col]))
   print(paste("Excluding ", length(pheno_na), " rows because of missing values for: ", phenotype_col, sep=""))
-  phenotypes = phenotypes[-pheno_na,]
+
+  if (length(pheno_na) > 0) {
+    phenotypes = phenotypes[-pheno_na,]
+  }
   
   covariates_arr = trimws(unlist(strsplit(covariate_cols, ",", fixed=T)[[1]]))
   for (covar in covariates_arr) {
