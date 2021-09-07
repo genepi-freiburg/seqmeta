@@ -35,7 +35,8 @@ parse_options = function() {
     make_option("--kinship", help="Kinship table path (requires columns 'ID1', 'ID2' and 'Kinship'); default '' = don't use matrix", default=""),
     make_option("--stepwise_grouptest", help="Step-wise group test ('add-one-in'); give gene name to calculate", default=""),
     make_option("--step_p_limit", help="P value threshold for single variants to be included in step-wise group test; default: 0.1", default="0.1"),
-    make_option("--leave_one_out", help="Use add-one-in mode (0) or leave-one-out mode (1); default: 0", default="0")
+    make_option("--leave_one_out", help="Use add-one-in mode (0) or leave-one-out mode (1); default: 0", default="0"),
+    make_option("--export_matrices", help="Exports genotype and phenotype matrix for given gene.", default="")
   )
   
   parse_args(OptionParser(option_list=option_list))
@@ -255,12 +256,30 @@ step_wise_group_test = function(parameters, results, geno_pheno, family, snp_inf
   write.table(steps, steps_fn, row.names=F, col.names=T, sep="\t", quote=F)
 }
 
+export_matrices = function(parameters, geno_pheno) {
+  geno_fn = gsub("group-", paste("geno-", parameters$export_matrices, "-", sep=""), parameters$group_output_file)
+  pheno_fn = gsub("group-", paste("pheno-", parameters$export_matrices, "-", sep=""), parameters$group_output_file)
+  print(paste("Writing genotypes to:", geno_fn, "; phenotypes to: ", pheno_fn, sep=""))
+
+  rownames(geno_pheno$phenotype_matrix) = rownames(geno_pheno$genotype_matrix)
+  write.table(geno_pheno$genotype_matrix, geno_fn, row.names=T, col.names=T, sep="\t", quote=F)
+  write.table(geno_pheno$phenotype_matrix, pheno_fn, row.names=T, col.names=T, sep="\t", quote=F)
+}
+
 
 process_gene = function(parameters, gene, snps, phenotype, kinship, sample, write_header = F) {
   step_wise = parameters$stepwise_grouptest
   if (nchar(step_wise) > 0) {
     if (gene != step_wise) {
       print(paste("Step-wise group test mode, skip gene: ", gene, sep=""))
+      return(F)
+    }
+  }
+
+  export = parameters$export_matrices
+  if (nchar(export) > 0) {
+    if (gene != export) {
+      print(paste("Export matrices mode, skip gene: ", gene, sep=""))
       return(F)
     }
   }
@@ -285,6 +304,12 @@ process_gene = function(parameters, gene, snps, phenotype, kinship, sample, writ
   }
 
   geno_pheno = prepare_genotype_phenotype_matrices(genotype, phenotype)
+
+  if (nchar(export) > 0) {
+    export_matrices(parameters, geno_pheno)
+    return(F)
+  }
+
   snp_info = build_snpinfo(gene, snps)
   #residuals = calculate_null_model_residuals(geno_pheno$phenotype_matrix, parameters$model_formula)
 
