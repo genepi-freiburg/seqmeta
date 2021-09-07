@@ -34,7 +34,8 @@ parse_options = function() {
     make_option("--max_maf", help="Upper minor allele frequency (MAF) treshhold, e.g. 0.01. Default 1, range [0,1].", default="1"),
     make_option("--kinship", help="Kinship table path (requires columns 'ID1', 'ID2' and 'Kinship'); default '' = don't use matrix", default=""),
     make_option("--stepwise_grouptest", help="Step-wise group test ('add-one-in'); give gene name to calculate", default=""),
-    make_option("--step_p_limit", help="P value threshold for single variants to be included in step-wise group test; default: 0.1", default="0.1")
+    make_option("--step_p_limit", help="P value threshold for single variants to be included in step-wise group test; default: 0.1", default="0.1"),
+    make_option("--leave_one_out", help="Use add-one-in mode (0) or leave-one-out mode (1); default: 0", default="0")
   )
   
   parse_args(OptionParser(option_list=option_list))
@@ -186,20 +187,30 @@ build_kinship_matrix = function(kinship_list, genotype_ids) {
 step_wise_group_test = function(parameters, results, geno_pheno, family, snp_info) {
   sv = results$single_variant
   sv = sv[order(sv$p),]
+  sv = sv[!is.na(sv$p),]
   print(sv)
 
   steps = data.frame()
   for (nVar in 1:nrow(sv)) {
-    if (sv[nVar, "p"] > as.numeric(parameters$step_p_limit)) {
-      print(paste("Break - p >", parameters$step_p_limit))
+    if (is.na(sv[nVar, "p"]) || sv[nVar, "p"] > as.numeric(parameters$step_p_limit)) {
+      print(paste("Break - p NA or p >", parameters$step_p_limit))
       break
     }
 
     steps[nVar, "nVar"] = nVar
 
-    vars = sv[1:nVar, "Name"]
-    print(paste("Use variants for step ", nVar, ": ", paste(vars, collapse=", "), sep=""))
+    leave_one_out = as.numeric(parameters$leave_one_out) == 1
+
+    if (!leave_one_out) {
+      print(paste("add-one-in: use 1..", nVar, sep=""))
+      vars = sv[1:nVar, "Name"]
+    } else {
+      print(paste("leave-one-out: use ", nVar, "..n", sep=""))
+      vars = sv[nVar:nrow(sv), "Name"]
+    }
+
     lastVar = sv[nVar,]
+    print(paste("Use variants for step ", nVar, ": ", paste(vars, collapse=", "), sep=""))
 
     my_idx = which(colnames(geno_pheno$genotype_matrix) %in% vars)
     print(paste("Indices:", paste(my_idx, collapse=", ")))
@@ -230,7 +241,8 @@ step_wise_group_test = function(parameters, results, geno_pheno, family, snp_inf
     steps[nVar, "se_burden"] = step_results$burden$se
     steps[nVar, "p_skat"] = step_results$skat$p
     steps[nVar, "p_skat_o"] = step_results$skat_o$p
-    steps[nVar, "p_sv"] = step_results$skat_o$p
+#    steps[nVar, "p_sv"] = step_results$skat_o$p
+	steps[nVar, "p_sv"] = lastVar$p
     steps[nVar, "beta_sv"] = lastVar$beta
     steps[nVar, "se_sv"] = lastVar$se
     steps[nVar, "maf_sv"] = lastVar$maf
