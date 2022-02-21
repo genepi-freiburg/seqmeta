@@ -60,6 +60,27 @@ Options:
         --skat_o_method=SKAT_O_METHOD
                 Method for 'skatOMeta' function' ('integration'/'saddlepoint'). If lowest p-value in T1 or SKAT test < 1E-9, change this to 'saddlepoint'
 
+        --min_maf=MIN_MAF
+                Lower minor allele frequency (MAF) treshhold, e.g. 0.01. Default 0, range [0,1].
+
+        --max_maf=MAX_MAF
+                Upper minor allele frequency (MAF) treshhold, e.g. 0.01. Default 1, range [0,1].
+
+        --kinship=KINSHIP
+                Kinship table path (requires columns 'ID1', 'ID2' and 'Kinship'); default '' = don't use matrix
+
+        --stepwise_grouptest=STEPWISE_GROUPTEST
+                Step-wise group test ('add-one-in'); give gene name to calculate
+
+        --step_p_limit=STEP_P_LIMIT
+                P value threshold for single variants to be included in step-wise group test; default: 0.1
+
+        --leave_one_out=LEAVE_ONE_OUT
+                Use add-one-in mode (0) or leave-one-out mode (1); default: 0
+
+        --export_matrices=EXPORT_MATRICES
+                Exports genotype and phenotype matrix for given gene(s).
+
         -h, --help
                 Show this help message and exit
 ```
