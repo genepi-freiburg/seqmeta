@@ -465,7 +465,11 @@ perform_tests = function(scores, snp_info, skat_o_method, min_maf, max_maf) {
   print(format(head(burden), digits=2))
   
   print("SKAT-O test")
-  skat_o = skatOMeta(scores, SNPInfo=snp_info, burden.wts = function(maf) { dbeta(maf, 1, 25) }, method = skat_o_method)
+  skat_o = try(skatOMeta(scores, SNPInfo=snp_info, burden.wts = function(maf) { dbeta(maf, 1, 25) }, method = skat_o_method))
+  if (is.character(skat_o)) {
+    print(paste("Detected SKAT-O error:", skat_o))
+    skat_o = data.frame(p = NA, pmin = NA, rho = NA, cmaf = NA, nmiss = NA, nsnps = NA, errflag = as.character(skat_o))
+  }
   print(format(head(skat_o), digits=2))
   
   list(single_variant = single_variant, burden = burden, skat = skat, skat_o = skat_o)
