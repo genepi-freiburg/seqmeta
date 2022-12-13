@@ -36,6 +36,8 @@ parse_options = function() {
     make_option("--stepwise_grouptest", help="Step-wise group test ('add-one-in'); give gene name to calculate", default=""),
     make_option("--step_p_limit", help="P value threshold for single variants to be included in step-wise group test; default: 0.1", default="0.1"),
     make_option("--leave_one_out", help="Use add-one-in mode (0) or leave-one-out mode (1); default: 0", default="0"),
+    make_option("--skip_skat", help="Skip the SKAT test (1), default: 0", default="0"),
+    make_option("--skip_skato", help="Skip the SKAT-O test (1), default: 0", default="0"),
     make_option("--export_matrices", help="Exports genotype and phenotype matrix for given gene(s).", default="")
   )
   
@@ -235,7 +237,7 @@ step_wise_group_test = function(parameters, results, geno_pheno, family, snp_inf
                          family = family,
                          SNPInfo = snp_info,
                          data = geno_pheno$phenotype_matrix)
-    step_results = perform_tests(scores, snp_info, parameters$skat_o_method,
+    step_results = perform_tests(parameters, scores, snp_info, parameters$skat_o_method,
                                  as.numeric(parameters$min_maf), as.numeric(parameters$max_maf))
     steps[nVar, "p_burden"] = step_results$burden$p 
     steps[nVar, "beta_burden"] = step_results$burden$beta
@@ -334,7 +336,7 @@ process_gene = function(parameters, gene, snps, phenotype, kinship, sample, writ
                          SNPInfo = snp_info,
                          data = geno_pheno$phenotype_matrix)
   }
-  results = perform_tests(scores, snp_info, parameters$skat_o_method,
+  results = perform_tests(parameters, scores, snp_info, parameters$skat_o_method,
 			  as.numeric(parameters$min_maf), as.numeric(parameters$max_maf))
   
   write_sv_result(results$single_variant, parameters$sv_output_file, write_header)
@@ -453,24 +455,34 @@ prepare_formula = function(phenotype_col, covariate_cols) {
   as.formula(formula_str)
 }
 
-perform_tests = function(scores, snp_info, skat_o_method, min_maf, max_maf) {
+perform_tests = function(parameters, scores, snp_info, skat_o_method, min_maf, max_maf) {
   single_variant = singlesnpMeta(scores, SNPInfo = snp_info)
-  
-  print("SKAT test")
-  skat = skatMeta(scores, SNPInfo = snp_info)
-  print(format(head(skat), digits = 2))
   
   print("Burden test")
   burden = burdenMeta(scores, SNPInfo = snp_info, mafRange = c(min_maf, max_maf))
   print(format(head(burden), digits=2))
   
-  print("SKAT-O test")
-  skat_o = try(skatOMeta(scores, SNPInfo=snp_info, burden.wts = function(maf) { dbeta(maf, 1, 25) }, method = skat_o_method))
-  if (is.character(skat_o)) {
-    print(paste("Detected SKAT-O error:", skat_o))
-    skat_o = data.frame(p = NA, pmin = NA, rho = NA, cmaf = NA, nmiss = NA, nsnps = NA, errflag = as.character(skat_o))
+  if (parameters$skip_skat == "0") {
+    print("SKAT test")
+    skat = skatMeta(scores, SNPInfo = snp_info)
+    print(format(head(skat), digits = 2))
+  } else {
+    print("Skipping SKAT test")
+    skat = data.frame(gene = burden$gene, p = NA, Qmeta = NA, cmaf = NA, nmiss=NA, nsnps = NA)
   }
-  print(format(head(skat_o), digits=2))
+
+  if (parameters$skip_skato == "0") {
+    print("SKAT-O test")
+    skat_o = try(skatOMeta(scores, SNPInfo=snp_info, burden.wts = function(maf) { dbeta(maf, 1, 25) }, method = skat_o_method))
+    if (is.character(skat_o)) {
+      print(paste("Detected SKAT-O error:", skat_o))
+      skat_o = data.frame(p = NA, pmin = NA, rho = NA, cmaf = NA, nmiss = NA, nsnps = NA, errflag = as.character(skat_o))
+    }
+    print(format(head(skat_o), digits=2))
+  } else {
+    print("Skipping SKAT-O test")
+    skat_o = data.frame(p = NA, pmin = NA, rho = NA, cmaf = NA, nmiss = NA, nsnps = NA, errflag = "skipped")
+  }
   
   list(single_variant = single_variant, burden = burden, skat = skat, skat_o = skat_o)
 }
