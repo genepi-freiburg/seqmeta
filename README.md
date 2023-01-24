@@ -1,5 +1,7 @@
 # SeqMeta Pipeline
 
+[![DOI](https://zenodo.org/badge/271744161.svg)](https://zenodo.org/badge/latestdoi/271744161)
+
 The pipeline consists mainly of R scripts with a few supporting Bash scripts.
 All R scripts are "executables" and can be used with `--help` to show command options.
 
