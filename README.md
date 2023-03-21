@@ -194,6 +194,21 @@ Options:
                 Show this help message and exit
 ```
 
+The "sv" (single variant) file must have at least the following columns:
+
+* gene - Ensembl Gene ID
+* Name - variant name (chr:pos:ref:alt), is split to get chr/pos/ref/alt columns
+* p - P-value
+* beta - Effect size
+* se - Standard error
+
+Example:
+
+```
+gene    Name    p       maf     caf     nmiss   ntotal  beta    se      beta.scores     se.scores
+ENSG00000096746 10:68337966:T:TG        0.110198283000258       5.09837401075741e-06    5.09837401075741e-06    0       389313  0.739648871041446       0.463061222626501       0.739648871041446       0.463061222626501
+```
+
 ## Build Jobs script
 
 The `buildJobs.R` script can be used to build a job file for Slurm or other scheduling systems.
